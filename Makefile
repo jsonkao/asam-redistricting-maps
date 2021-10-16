@@ -3,15 +3,20 @@
 # - Join block group shapefile with data about Asian population
 #
 
-# Filter to only Brooklyn block groups; join it with census data; project
-mapping/bg_brooklyn.topojson: mapping/tl_2021_36_bg.shp data/blkgrp_asians.csv Makefile
+# Project and make web-friendly
+outputs/blkgrp_asians.topojson: outputs/blkgrp_asians.geojson
+	mapshaper $< \
+	-proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs" \
+	-target 1 name="block_groups" \
+	-o $@ width=975
+
+# Filter to only Brooklyn block groups; join it with census data
+outputs/blkgrp_asians.geojson: mapping/tl_2021_36_bg.shp outputs/blkgrp_asians.csv
 	mapshaper $< \
 	-filter "COUNTYFP === '047' && ALAND > 0" \
 	-filter-fields GEOID \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
-	-proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs" \
-	-target 1 name="block_groups" \
-	-o $@ format=topojson width=975
+	-o $@
 
 mapping/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
 	unzip -d mapping $<
@@ -28,7 +33,7 @@ mapping/tl_2021_36_bg.zip:
 #
 
 # Main target
-data/blkgrp_asians.csv:
+outputs/blkgrp_asians.csv:
 	mkdir -p data
 	Rscript crosswalk/census.R $@
 
