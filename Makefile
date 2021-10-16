@@ -30,6 +30,7 @@ mapping/tl_2021_36_bg.zip:
 #
 # CROSSWALK
 # - Use the NHGIS crosswalk to get 2010 and 2020 data on the same block group geography
+# - Helpful resource: https://forum.ipums.org/t/can-i-use-nhgis-crosswalk-for-block-group-level-data/2750
 #
 
 # Main target
