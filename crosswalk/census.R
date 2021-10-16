@@ -1,16 +1,17 @@
 #' ---
 #' title: "Getting 2010 and 2020 Asian populations on the same block group geography"
+#' author: "Jason Kao"
 #' ---
 
 
 #' Library installation and configuration.
 
+knitr::opts_chunk$set(message = FALSE)
 suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
-census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af', install = T)
-knitr::opts_chunk$set(message = FALSE)
+census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 
-#' ## Disaggregation
+#' ### Disaggregation
 
 #' First, retrieve block-level data for the total population in Brooklyn in both 2010 and 2020.
 
@@ -35,7 +36,7 @@ blk_pop_2020 <- get_decennial(
 ) %>%
   select(GEOID, pop = value)
 
-#' Next, get Asian Alone population from 2010 at the block group level.
+#' Next, get the Asian Alone population from 2010 at the block group level.
 
 bg_pop_2010_asian <- get_decennial(
   geography = "block group",
@@ -58,7 +59,7 @@ blk_pop_2010_asian <- blk_pop_2010 %>%
   mutate(pop_asian = replace(pop_asian, is.na(pop_asian), 0)) %>%
   select(GEOID, pop_asian)
 
-#' ## Interpolation and reaggregation
+#' ### Interpolation and reaggregation
 
 #' Read in the NHGIS 2010 block to 2020 block crosswalk.
 
@@ -67,7 +68,7 @@ blk_crosswalk <-
   mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
   select(GEOID10, GEOID20, WEIGHT, PAREA)
 
-#' Use the crosswalk to interpolate the Asian population from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level estimates of the 2010 Asian population within each 2020 block group.
+#' Use the crosswalk to interpolate the Asian population from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level data within each 2020 block group to get the 2010 Asian population in 2020 block groups.
 
 bg2020_pop_2010_asian <- blk_crosswalk %>%
   inner_join(blk_pop_2010_asian %>% rename(GEOID10 = GEOID), by = "GEOID10") %>%
@@ -84,7 +85,7 @@ stopifnot(
     round(bg_pop_2010_asian %>% pull(pop_asian) %>% sum())
 )
 
-#' We have interpolated 2010's Asian population to 2020 block groups. Now, download the 2020 block-group-level Asian population data so we can join the two.
+#' We have interpolated 2010's Asian population to 2020 block groups. Now, download the 2020 block-group-level Asian population data so we can look at the two together.
 
 bg_pop_2020_asian <- get_decennial(
   geography = "block group",
@@ -103,12 +104,16 @@ output <- inner_join(
   suffix = c("_2010", "_2020")
 )
 
+#' Solid.
+output %>% head
+
 #' Sanity check: did Brooklyn's Asian population grow by 43%? The output below shows what fold the population increased by in our analysis.
 
 output %>%
   summarize(fold = sum(pop_asian_2020) / sum(pop_asian_2010, na.rm = T))
 
 #' 1.4248. Close enough?
+#' 
 #' Write out the output if desired.
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -116,3 +121,4 @@ if (length(args) > 0) {
   output %>%
     write.csv(args[[1]], row.names = FALSE)
 }
+
