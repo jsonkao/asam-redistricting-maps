@@ -1,15 +1,20 @@
-#
-# Library setup
-#
+#' ---
+#' title: "Getting 2010 and 2020 Asian populations on the same block group geography"
+#' ---
+
+
+#' Library installation and configuration.
 
 suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
-census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
+census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af', install = T)
+knitr::opts_chunk$set(message = FALSE)
 
-#
-# Get block populations from 2010 and 2020
-#
+#' ## Disaggregation
 
+#' First, retrieve block-level data for the total population in Brooklyn in both 2010 and 2020.
+
+# Get 2010 data
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",
@@ -19,6 +24,7 @@ blk_pop_2010 <- get_decennial(
 ) %>%
   select(GEOID, pop = value)
 
+# Get 2020 data
 blk_pop_2020 <- get_decennial(
   geography = "block",
   state = "New York",
@@ -29,9 +35,7 @@ blk_pop_2020 <- get_decennial(
 ) %>%
   select(GEOID, pop = value)
 
-#
-# Get block group Asian alone population from 2010
-#
+#' Next, get Asian Alone population from 2010 at the block group level.
 
 bg_pop_2010_asian <- get_decennial(
   geography = "block group",
@@ -42,17 +46,7 @@ bg_pop_2010_asian <- get_decennial(
 ) %>%
   select(GEOID, pop_asian = value)
 
-#
-# Get crosswalk
-#
-
-blk_crosswalk <- read.csv("crosswalk/nhgis_blk2010_blk2020_ge_36047.csv") %>%
-  mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
-  select(GEOID10, GEOID20, WEIGHT, PAREA)
-
-#
-# Disaggregate Asian population from 2010 block groups into 2010 blocks
-#
+#' Allocate the 2010 block-group-level Asian population among 2010 blocks in proportion to the blocks' total populations.
 
 blk_pop_2010_asian <- blk_pop_2010 %>%
   mutate(blk_group = substr(GEOID, 1, 12)) %>%
@@ -64,10 +58,16 @@ blk_pop_2010_asian <- blk_pop_2010 %>%
   mutate(pop_asian = replace(pop_asian, is.na(pop_asian), 0)) %>%
   select(GEOID, pop_asian)
 
-#
-# Use NHGIS block-to-block crosswalk to interpolate Asian estimates from 2010 blocks to 2020 blocks,
-# then sum the 2020 block-level estimates of 2010 Asian population within each 2020 block group.
-#
+#' ## Interpolation and reaggregation
+
+#' Read in the NHGIS 2010 block to 2020 block crosswalk.
+
+blk_crosswalk <-
+  read.csv("./nhgis_blk2010_blk2020_ge_36047.csv") %>%
+  mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
+  select(GEOID10, GEOID20, WEIGHT, PAREA)
+
+#' Use the crosswalk to interpolate the Asian population from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level estimates of the 2010 Asian population within each 2020 block group.
 
 bg2020_pop_2010_asian <- blk_crosswalk %>%
   inner_join(blk_pop_2010_asian %>% rename(GEOID10 = GEOID), by = "GEOID10") %>%
@@ -78,14 +78,13 @@ bg2020_pop_2010_asian <- blk_crosswalk %>%
   summarize(pop_asian = sum(pop_asian)) %>%
   rename(GEOID = blk_group)
 
-# Sanity check: total sum is still the same after weighting? It still is.
+#' Sanity check: is the total number of Asian people still the same after switching from 2010 block groups to 2020 block groups? Yes.
 stopifnot(
-  round(bg2020_pop_2010_asian %>% pull(pop_asian) %>% sum()) == round(bg_pop_2010_asian %>% pull(pop_asian) %>% sum())
+  round(bg2020_pop_2010_asian %>% pull(pop_asian) %>% sum()) ==
+    round(bg_pop_2010_asian %>% pull(pop_asian) %>% sum())
 )
 
-#
-# Now we have 2010's Asian population in 2020 block groups. Join it with 2020's Asian population.
-#
+#' We have interpolated 2010's Asian population to 2020 block groups. Now, download the 2020 block-group-level Asian population data so we can join the two.
 
 bg_pop_2020_asian <- get_decennial(
   geography = "block group",
@@ -104,13 +103,16 @@ output <- inner_join(
   suffix = c("_2010", "_2020")
 )
 
-# Sanity check: did Brooklyn's Asian population grow by 43%? The output below says 1.4248. Close enough?
-output %>%
-  summarize(sum(pop_asian_2020) / sum(pop_asian_2010, na.rm = T))
-
-#
-# Write output
-#
+#' Sanity check: did Brooklyn's Asian population grow by 43%? The output below shows what fold the population increased by in our analysis.
 
 output %>%
-  write.csv(commandArgs(trailingOnly = TRUE)[[1]], row.names = FALSE)
+  summarize(fold = sum(pop_asian_2020) / sum(pop_asian_2010, na.rm = T))
+
+#' 1.4248. Close enough?
+#' Write out the output if desired.
+
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) > 0) {
+  output %>%
+    write.csv(args[[1]], row.names = FALSE)
+}

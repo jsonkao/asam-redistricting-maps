@@ -1,6 +1,5 @@
 import sys
 
-# NHGIS' identifiers are State FIPS + '0' + County FIPS + '0'
 BROOKLYN_FIPS = "36047"
 QUEENS_FIPS = "36081"
 
