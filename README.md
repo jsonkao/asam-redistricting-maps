@@ -1,0 +1,1 @@
+I manually downloaded 2020 block-level census data from data.census.gov.

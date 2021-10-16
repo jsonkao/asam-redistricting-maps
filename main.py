@@ -1,15 +1,16 @@
 import sys
 
-BROOKLYN_FIPS = "3600470"  # State FIPS, '0', County FIPS, '0'
-QUEENS_FIPS = "3600810"
+# NHGIS' identifiers are State FIPS + '0' + County FIPS + '0'
+BROOKLYN_FIPS = "36047"
+QUEENS_FIPS = "36081"
 
 
 def filter_crosswalk():
     f = sys.stdin
     print(next(f).strip())
-    block_len = len("G36000100001001014")
+    block_id_len = len("360010001001000")
     for line in f:
-        if line[block_len + 2 : block_len + 9] == BROOKLYN_FIPS:
+        if line[block_id_len + 1 : block_id_len + 6] == BROOKLYN_FIPS:
             print(line.strip())
 
 
