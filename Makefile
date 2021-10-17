@@ -35,7 +35,6 @@ mapping/tl_2021_36_bg.zip:
 
 # Main target
 outputs/blkgrp_asians.csv: crosswalk/census.R
-	mkdir -p data
 	Rscript crosswalk/census.R $@
 
 # Same as original block crosswalk but filtered down to Brooklyn (FIPS = 36047)
