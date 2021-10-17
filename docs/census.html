@@ -247,9 +247,9 @@ census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')</code></pre>
 ## 5 360470002001 360470002001      1
 ## 6 360470003011 360470003011      1</code></pre>
 </div>
-<div id="using-the-block-group-to-block-group-crosswalk" class="section level2">
-<h2>Using the block-group-to-block-group crosswalk</h2>
-<p>Retrieve the 2010 block-group-level population data that we want to interpolate into 2020 block groups.</p>
+<div id="using-the-block-group-to-block-group-crosswalk" class="section level3">
+<h3>Using the block-group-to-block-group crosswalk</h3>
+<p>Retrieve 2010 block-group-level population data that we want to interpolate into 2020 block groups. Below, I'm grabbinng the Asian population and the total population for each block group.</p>
 <pre class="r"><code>bg_pop_2010 &lt;- get_decennial(
   geography = &quot;block group&quot;,
   state = &quot;New York&quot;,
@@ -292,6 +292,18 @@ output &lt;- inner_join(
   by = c(&quot;GEOID&quot;, &quot;group&quot;),
   suffix = c(&quot;_2010&quot;, &quot;_2020&quot;)
 )</code></pre>
+<p>Now, we have 2010 and 2020 population data on the same block group geography.</p>
+<pre class="r"><code>output %&gt;% head</code></pre>
+<pre><code>## # A tibble: 6 x 4
+## # Groups:   GEOID [3]
+##   GEOID        group pop_2010 pop_2020
+##   &lt;chr&gt;        &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+## 1 360470001001 asian       36       74
+## 2 360470001001 total      580      904
+## 3 360470001002 asian       52       61
+## 4 360470001002 total      939      704
+## 5 360470001003 asian      159      177
+## 6 360470001003 total     1355     1488</code></pre>
 <p>Sanity check: did Brooklyn's Asian population grow by 43% while the rest of the county grew 9%? The output below shows what fold the population increased by in our analysis.</p>
 <pre class="r"><code>output %&gt;%
   group_by(group) %&gt;%
@@ -301,10 +313,11 @@ output &lt;- inner_join(
 ##   &lt;chr&gt; &lt;dbl&gt;
 ## 1 asian  1.42
 ## 2 total  1.09</code></pre>
-<p>Save the output in a file if we're running this on the command line.</p>
+<p>If we're running this on the command line, make the data wide and save it in a file.</p>
 <pre class="r"><code>args &lt;- commandArgs(trailingOnly = TRUE)
 if (length(args) &gt; 0) {
   output %&gt;%
+    tidyr::pivot_wider(names_from = group, values_from = c(pop_2010,pop_2020)) %&gt;% 
     write.csv(args[[1]], row.names = FALSE)
 }</code></pre>
 </div>

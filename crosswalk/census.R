@@ -109,6 +109,10 @@ output <- inner_join(
   suffix = c("_2010", "_2020")
 )
 
+#' Now, we have 2010 and 2020 population data on the same block group geography.
+
+output %>% head
+
 #' Sanity check: did Brooklyn's Asian population grow by 43% while the rest of the county grew 9%? The output below shows what fold the population increased by in our analysis.
 
 output %>%
