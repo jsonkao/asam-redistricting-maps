@@ -28,7 +28,7 @@ blk_pop_2010 <- get_decennial(
 #' Read in the NHGIS 2010 block to 2020 block crosswalk.
 
 blk_crosswalk <-
-  read.csv("./nhgis_blk2010_blk2020_ge_36047.csv") %>%
+  read.csv("./crosswalk/nhgis_blk2010_blk2020_ge_36047.csv") %>%
   mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
   select(GEOID10, GEOID20, WEIGHT, PAREA)
 
@@ -115,10 +115,11 @@ output %>%
   group_by(group) %>%
   summarize(fold = sum(pop_2020) / sum(pop_2010))
 
-#' Save the output in a file if we're running this on the command line.
+#' If we're running this on the command line, make the data wide and save it in a file.
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {
   output %>%
+    tidyr::pivot_wider(names_from = group, values_from = c(pop_2010,pop_2020)) %>% 
     write.csv(args[[1]], row.names = FALSE)
 }

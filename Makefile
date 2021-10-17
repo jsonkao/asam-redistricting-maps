@@ -34,7 +34,7 @@ mapping/tl_2021_36_bg.zip:
 #
 
 # Main target
-outputs/blkgrp_asians.csv:
+outputs/blkgrp_asians.csv: crosswalk/census.R
 	mkdir -p data
 	Rscript crosswalk/census.R $@
 
