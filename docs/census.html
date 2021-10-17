@@ -11,7 +11,7 @@
 
 <meta name="author" content="Jason Kao" />
 
-<meta name="date" content="2021-10-16" />
+<meta name="date" content="2021-10-17" />
 
 <title>Getting 2010 and 2020 Asian populations on the same block group geography</title>
 
@@ -191,7 +191,7 @@ summary {
 
 <h1 class="title toc-ignore">Getting 2010 and 2020 Asian populations on the same block group geography</h1>
 <h4 class="author">Jason Kao</h4>
-<h4 class="date">2021-10-16</h4>
+<h4 class="date">2021-10-17</h4>
 
 </div>
 
@@ -201,108 +201,107 @@ summary {
 suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')</code></pre>
-<pre><code>## To install your API key for use in future sessions, run this function with `install = TRUE`.</code></pre>
-<div id="disaggregation" class="section level3">
-<h3>Disaggregation</h3>
-<p>First, retrieve block-level data for the total population in Brooklyn in both 2010 and 2020.</p>
-<pre class="r"><code># Get 2010 data
-blk_pop_2010 &lt;- get_decennial(
+<div id="creating-a-block-group-to-block-group-crosswalk" class="section level3">
+<h3>Creating a block-group-to-block-group crosswalk</h3>
+<p>To interpolate many block-group statistics (e.g. Asian population, White population, Black population), we first make a block-group-to-block-group crosswalk.</p>
+<p>First, retrieve block-level population data in Brooklyn in 2010.</p>
+<pre class="r"><code>blk_pop_2010 &lt;- get_decennial(
   geography = &quot;block&quot;,
   state = &quot;New York&quot;,
   county = &quot;Kings&quot;,
   variables = &quot;P001001&quot;,
   year = 2010
 ) %&gt;%
-  select(GEOID, pop = value)
-
-# Get 2020 data
-blk_pop_2020 &lt;- get_decennial(
-  geography = &quot;block&quot;,
-  state = &quot;New York&quot;,
-  county = &quot;Kings&quot;,
-  variables = &quot;P1_001N&quot;,
-  sumfile = &quot;pl&quot;,
-  year = 2020
-) %&gt;%
   select(GEOID, pop = value)</code></pre>
-<p>Next, get the Asian Alone population from 2010 at the block group level.</p>
-<pre class="r"><code>bg_pop_2010_asian &lt;- get_decennial(
-  geography = &quot;block group&quot;,
-  state = &quot;New York&quot;,
-  county = &quot;Kings&quot;,
-  variables = &quot;P003005&quot;,
-  year = 2010
-) %&gt;%
-  select(GEOID, pop_asian = value)</code></pre>
-<p>Allocate the 2010 block-group-level Asian population among 2010 blocks in proportion to the blocks' total populations.</p>
-<pre class="r"><code>blk_pop_2010_asian &lt;- blk_pop_2010 %&gt;%
-  mutate(blk_group = substr(GEOID, 1, 12)) %&gt;%
-  group_by(blk_group) %&gt;%
-  mutate(proportion = pop / sum(pop)) %&gt;%
-  ungroup() %&gt;%
-  inner_join(bg_pop_2010_asian %&gt;% rename(blk_group = GEOID), by = &quot;blk_group&quot;) %&gt;%
-  mutate(pop_asian = pop_asian * proportion) %&gt;%
-  mutate(pop_asian = replace(pop_asian, is.na(pop_asian), 0)) %&gt;%
-  select(GEOID, pop_asian)</code></pre>
-</div>
-<div id="interpolation-and-reaggregation" class="section level3">
-<h3>Interpolation and reaggregation</h3>
 <p>Read in the NHGIS 2010 block to 2020 block crosswalk.</p>
 <pre class="r"><code>blk_crosswalk &lt;-
   read.csv(&quot;./nhgis_blk2010_blk2020_ge_36047.csv&quot;) %&gt;%
   mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %&gt;%
   select(GEOID10, GEOID20, WEIGHT, PAREA)</code></pre>
-<p>Use the crosswalk to interpolate the Asian population from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level data within each 2020 block group to get the 2010 Asian population in 2020 block groups.</p>
-<pre class="r"><code>bg2020_pop_2010_asian &lt;- blk_crosswalk %&gt;%
-  inner_join(blk_pop_2010_asian %&gt;% rename(GEOID10 = GEOID), by = &quot;GEOID10&quot;) %&gt;%
-  mutate(pop_asian = pop_asian * WEIGHT) %&gt;%
-  select(GEOID = GEOID20, pop_asian) %&gt;%
-  mutate(blk_group = substr(GEOID, 1, 12)) %&gt;%
-  group_by(blk_group) %&gt;%
-  summarize(pop_asian = sum(pop_asian)) %&gt;%
-  rename(GEOID = blk_group)</code></pre>
-<p>Sanity check: is the total number of Asian people still the same after switching from 2010 block groups to 2020 block groups? Yes.</p>
-<pre class="r"><code>stopifnot(
-  round(bg2020_pop_2010_asian %&gt;% pull(pop_asian) %&gt;% sum()) ==
-    round(bg_pop_2010_asian %&gt;% pull(pop_asian) %&gt;% sum())
-)</code></pre>
-<p>We have interpolated 2010's Asian population to 2020 block groups. Now, download the 2020 block-group-level Asian population data so we can look at the two together.</p>
-<pre class="r"><code>bg_pop_2020_asian &lt;- get_decennial(
+<p>Interpolate the 2010 block-level population data from 2010 blocks to 2020 blocks.</p>
+<pre class="r"><code>blk2020_pop_2010 &lt;- blk_crosswalk %&gt;%
+  inner_join(blk_pop_2010 %&gt;% rename(GEOID10 = GEOID), by = &quot;GEOID10&quot;) %&gt;%
+  mutate(pop_weighted = pop * WEIGHT)</code></pre>
+<p>Find the proportion of the 2010 block group’s population that lies in each 2020 block group.</p>
+<pre class="r"><code>bg_crosswalk &lt;- blk2020_pop_2010 %&gt;%
+  mutate(blk_group10 = substr(GEOID10, 1, 12),
+         blk_group20 = substr(GEOID20, 1, 12)) %&gt;%
+  group_by(blk_group10, blk_group20) %&gt;%
+  summarize(pop_weighted = sum(pop_weighted)) %&gt;%
+  inner_join(
+    blk_pop_2010 %&gt;% mutate(blk_group10 = substr(GEOID, 1, 12)) %&gt;% group_by(blk_group10) %&gt;% summarize(pop = sum(pop)),
+    by = &quot;blk_group10&quot;
+  ) %&gt;%
+  mutate(weight = pop_weighted / pop) %&gt;%
+  select(-pop_weighted,-pop) %&gt;%
+  ungroup()</code></pre>
+<p>This is our block-group-to-block-group (bg2bg) crosswalk.</p>
+<pre class="r"><code>bg_crosswalk %&gt;% head</code></pre>
+<pre><code>## # A tibble: 6 x 3
+##   blk_group10  blk_group20  weight
+##   &lt;chr&gt;        &lt;chr&gt;         &lt;dbl&gt;
+## 1 360470001001 360470001001      1
+## 2 360470001002 360470001002      1
+## 3 360470001003 360470001003      1
+## 4 360470001004 360470001004      1
+## 5 360470002001 360470002001      1
+## 6 360470003011 360470003011      1</code></pre>
+</div>
+<div id="using-the-block-group-to-block-group-crosswalk" class="section level2">
+<h2>Using the block-group-to-block-group crosswalk</h2>
+<p>Retrieve the 2010 block-group-level population data that we want to interpolate into 2020 block groups.</p>
+<pre class="r"><code>bg_pop_2010 &lt;- get_decennial(
   geography = &quot;block group&quot;,
   state = &quot;New York&quot;,
   county = &quot;Kings&quot;,
-  variables = &quot;P1_006N&quot;,
+  variables = c(asian = &quot;P003005&quot;, total = &quot;P001001&quot;),
+  year = 2010
+) %&gt;%
+  select(blk_group = GEOID,
+         group = variable,
+         pop = value)</code></pre>
+<p>Use the bg2bg crosswalk to interpolate this data from 2010 block groups into 2020 block groups.</p>
+<pre class="r"><code>bg2020_pop_2010 &lt;- bg_crosswalk %&gt;%
+  inner_join(bg_pop_2010 %&gt;% rename(blk_group10 = blk_group), by = &quot;blk_group10&quot;) %&gt;%
+  mutate(pop_weighted = pop * weight) %&gt;%
+  select(GEOID = blk_group20, group, pop = pop_weighted) %&gt;%
+  group_by(GEOID, group) %&gt;%
+  summarize(pop = sum(pop, na.rm = T))</code></pre>
+<p>Sanity check: is the total number of Asian people still the same after switching from 2010 block groups to 2020 block groups? Yes.</p>
+<pre class="r"><code>stopifnot(
+  round(
+    bg2020_pop_2010 %&gt;% filter(group == &quot;asian&quot;) %&gt;% pull(pop) %&gt;% sum(na.rm = T)
+  ) ==
+    round(bg_pop_2010 %&gt;% filter(group == &quot;asian&quot;) %&gt;% pull(pop) %&gt;% sum())
+)</code></pre>
+<p>We have interpolated 2010's population data to 2020 block groups. Now, download 2020 block-group-level population data so we can look at both years together.</p>
+<pre class="r"><code>bg_pop_2020 &lt;- get_decennial(
+  geography = &quot;block group&quot;,
+  state = &quot;New York&quot;,
+  county = &quot;Kings&quot;,
+  variables = c(total = &quot;P1_001N&quot;, asian = &quot;P1_006N&quot;),
   sumfile = &quot;pl&quot;,
   year = 2020
 ) %&gt;%
-  select(GEOID, pop_asian = value)
+  select(-NAME) %&gt;%
+  rename(group = variable, pop = value)
 
 output &lt;- inner_join(
-  bg2020_pop_2010_asian,
-  bg_pop_2020_asian,
-  by = &quot;GEOID&quot;,
+  bg2020_pop_2010,
+  bg_pop_2020,
+  by = c(&quot;GEOID&quot;, &quot;group&quot;),
   suffix = c(&quot;_2010&quot;, &quot;_2020&quot;)
 )</code></pre>
-<p>Solid.</p>
-<pre class="r"><code>output %&gt;% head</code></pre>
-<pre><code>## # A tibble: 6 x 3
-##   GEOID        pop_asian_2010 pop_asian_2020
-##   &lt;chr&gt;                 &lt;dbl&gt;          &lt;dbl&gt;
-## 1 360470001001             36             74
-## 2 360470001002             52             61
-## 3 360470001003            159            177
-## 4 360470001004             83            141
-## 5 360470002001             49             56
-## 6 360470003011             43             30</code></pre>
-<p>Sanity check: did Brooklyn's Asian population grow by 43%? The output below shows what fold the population increased by in our analysis.</p>
+<p>Sanity check: did Brooklyn's Asian population grow by 43% while the rest of the county grew 9%? The output below shows what fold the population increased by in our analysis.</p>
 <pre class="r"><code>output %&gt;%
-  summarize(fold = sum(pop_asian_2020) / sum(pop_asian_2010, na.rm = T))</code></pre>
-<pre><code>## # A tibble: 1 x 1
-##    fold
-##   &lt;dbl&gt;
-## 1  1.42</code></pre>
-<p>1.4248. Close enough?</p>
-<p>Write out the output if desired.</p>
+  group_by(group) %&gt;%
+  summarize(fold = sum(pop_2020) / sum(pop_2010))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   group  fold
+##   &lt;chr&gt; &lt;dbl&gt;
+## 1 asian  1.42
+## 2 total  1.09</code></pre>
+<p>Save the output in a file if we're running this on the command line.</p>
 <pre class="r"><code>args &lt;- commandArgs(trailingOnly = TRUE)
 if (length(args) &gt; 0) {
   output %&gt;%
