@@ -11,30 +11,31 @@ suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 
+#' # Generating a block-group-to-block-group crosswalk
+#' To be able to interpolate many block-group statistics (e.g. Asian population, White population, Black population), we first make a block-group-to-block-group crosswalk.
+
 #' ### Disaggregation
 
-#' First, retrieve block-level data for the total population in Brooklyn in both 2010 and 2020.
+#' First, retrieve block-level total population data in Brooklyn in both 2010 and 2020.
 
-# Get 2010 data
+# Get 2010 populations: Total, Asian, 002 = White, 003 = Black
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",
   county = "Kings",
-  variables = "P001001",
+  variables = c(pop_total = "P001001", pop_asian = "P003005"),
   year = 2010
-) %>%
-  select(GEOID, pop = value)
+)
 
-# Get 2020 data
+# Get 2020 populations: 003 = White, 004 = Black, 006 = Asian
 blk_pop_2020 <- get_decennial(
   geography = "block",
   state = "New York",
   county = "Kings",
-  variables = "P1_001N",
+  variables = c(pop_total = "P1_001N", pop_asian = "P1_006N"),
   sumfile = "pl",
   year = 2020
-) %>%
-  select(GEOID, pop = value)
+)
 
 #' Next, get the Asian Alone population from 2010 at the block group level.
 
