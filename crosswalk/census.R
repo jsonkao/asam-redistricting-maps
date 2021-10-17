@@ -11,54 +11,58 @@ suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 
-#' # Generating a block-group-to-block-group crosswalk
+#' ## Generating a block-group-to-block-group crosswalk
+#' 
 #' To be able to interpolate many block-group statistics (e.g. Asian population, White population, Black population), we first make a block-group-to-block-group crosswalk.
 
-#' ### Disaggregation
+#' ### TITLE
 
-#' First, retrieve block-level total population data in Brooklyn in both 2010 and 2020.
+#' First, retrieve block population data in Brooklyn in both 2010 and 2020.
 
-# Get 2010 populations: Total, Asian, 002 = White, 003 = Black
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",
   county = "Kings",
-  variables = c(pop_total = "P001001", pop_asian = "P003005"),
+  variables = "P001001",
   year = 2010
-)
+) %>%
+  select(GEOID, pop = value)
 
-# Get 2020 populations: 003 = White, 004 = Black, 006 = Asian
 blk_pop_2020 <- get_decennial(
   geography = "block",
   state = "New York",
   county = "Kings",
-  variables = c(pop_total = "P1_001N", pop_asian = "P1_006N"),
+  variables = "P1_001N",
   sumfile = "pl",
   year = 2020
-)
+) %>%
+  select(GEOID, pop = value)
 
-#' Next, get the Asian Alone population from 2010 at the block group level.
+#' Next, get the 2010 population data we want to interpolate at the block group level.
 
-bg_pop_2010_asian <- get_decennial(
+bg_pop_2010 <- get_decennial(
   geography = "block group",
   state = "New York",
   county = "Kings",
-  variables = "P003005",
+  variables = c(asian = "P003005", total = "P001001"),
   year = 2010
 ) %>%
-  select(GEOID, pop_asian = value)
+  select(blk_group = GEOID,
+         group = variable,
+         pop = value)
 
-#' Allocate the 2010 block-group-level Asian population among 2010 blocks in proportion to the blocks' total populations.
+#' Allocate the 2010 block-group-level data among 2010 blocks in proportion to the blocks' total populations. Keep information about the original population so we can make a crosswalk.
 
-blk_pop_2010_asian <- blk_pop_2010 %>%
+blk_pop_2010_distributed <- blk_pop_2010 %>%
   mutate(blk_group = substr(GEOID, 1, 12)) %>%
   group_by(blk_group) %>%
   mutate(proportion = pop / sum(pop)) %>%
+  mutate(proportion = replace(proportion, is.na(proportion), 0)) %>%
   ungroup() %>%
-  inner_join(bg_pop_2010_asian %>% rename(blk_group = GEOID), by = "blk_group") %>%
-  mutate(pop_asian = pop_asian * proportion) %>%
-  mutate(pop_asian = replace(pop_asian, is.na(pop_asian), 0)) %>%
-  select(GEOID, pop_asian)
+  select(GEOID, blk_group, proportion) %>%
+  inner_join(bg_pop_2010, by = "blk_group") %>%
+  mutate(pop_distributed = pop * proportion) %>%
+  select(GEOID, group, pop_distributed)
 
 #' ### Interpolation and reaggregation
 
@@ -69,52 +73,82 @@ blk_crosswalk <-
   mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
   select(GEOID10, GEOID20, WEIGHT, PAREA)
 
-#' Use the crosswalk to interpolate the Asian population from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level data within each 2020 block group to get the 2010 Asian population in 2020 block groups.
+#' Use 2010 block-level total population data to make a block-group-to-block-group crosswalk.
 
-bg2020_pop_2010_asian <- blk_crosswalk %>%
-  inner_join(blk_pop_2010_asian %>% rename(GEOID10 = GEOID), by = "GEOID10") %>%
-  mutate(pop_asian = pop_asian * WEIGHT) %>%
-  select(GEOID = GEOID20, pop_asian) %>%
-  mutate(blk_group = substr(GEOID, 1, 12)) %>%
-  group_by(blk_group) %>%
-  summarize(pop_asian = sum(pop_asian)) %>%
-  rename(GEOID = blk_group)
+bg_crosswalk <- blk_crosswalk %>%
+  inner_join(blk_pop_2010 %>% rename(GEOID10 = GEOID), by = "GEOID10") %>% 
+  mutate(pop_weighted = pop * WEIGHT) %>% 
+  mutate(blk_group10 = substr(GEOID10, 1, 12), blk_group20 = substr(GEOID20, 1, 12)) %>% 
+  group_by(blk_group10, blk_group20) %>% 
+  summarize(pop_weighted = sum(pop_weighted)) %>% 
+  inner_join(
+    blk_pop_2010 %>% mutate(blk_group10 = substr(GEOID, 1, 12)) %>% group_by(blk_group10) %>% summarize(pop = sum(pop)),
+    by = "blk_group10"
+  ) %>% 
+  mutate(weight = pop_weighted / pop) %>% 
+  select(-pop_weighted, -pop) %>%
+  ungroup()
+
+#' Use the bg2bg crosswalk to interpolate 2010 population data from 2010 block groups into 2020 block groups.
+ 
+bg2020_pop_2010 <- bg_crosswalk %>% 
+  inner_join(bg_pop_2010 %>% rename(blk_group10 = blk_group), by = "blk_group10") %>% 
+  mutate(pop_weighted = pop * weight) %>% 
+  select(GEOID = blk_group20, group, pop = pop_weighted) %>% 
+  group_by(GEOID, group) %>% 
+  summarize(pop = sum(pop))
+  
+#' Use the crosswalk to interpolate the 2010 population data from 2010 blocks to 2020 blocks. Then, sum the 2020 block-level data within each 2020 block group to get the 2010 population data in 2020 block groups.
+
+bg2020_pop_2010 <- blk_crosswalk %>%
+  inner_join(blk_pop_2010_distributed %>% rename(GEOID10 = GEOID), by = "GEOID10") %>%
+  mutate(pop_distributed_weighted = pop_distributed * WEIGHT) %>%
+  select(GEOID10, GEOID20, group, pop_distributed, pop_distributed_weighted) %>%
+  mutate(blk_group20 = substr(GEOID20, 1, 12), blk_group10 = substr(GEOID10, 1, 12)) %>%
+  group_by(blk_group20, blk_group10, group) %>%
+  summarize(pop_old = sum(pop_distributed), pop = sum(pop_distributed_weighted)) %>%
+  rename(GEOID = blk_group20)
 
 #' Sanity check: is the total number of Asian people still the same after switching from 2010 block groups to 2020 block groups? Yes.
 stopifnot(
-  round(bg2020_pop_2010_asian %>% pull(pop_asian) %>% sum()) ==
-    round(bg_pop_2010_asian %>% pull(pop_asian) %>% sum())
+  round(
+    bg2020_pop_2010 %>% filter(group == "asian") %>% pull(pop) %>% sum(na.rm = T)
+  ) ==
+    round(bg_pop_2010 %>% filter(group == "asian") %>% pull(pop) %>% sum())
 )
 
-#' We have interpolated 2010's Asian population to 2020 block groups. Now, download the 2020 block-group-level Asian population data so we can look at the two together.
+#' We have interpolated 2010's population data to 2020 block groups. We can use this to make a crosswalk.
 
-bg_pop_2020_asian <- get_decennial(
+
+#' We have interpolated 2010's population data to 2020 block groups. Now, download 2020 block-group-level population data so we can look at both years together.
+
+bg_pop_2020 <- get_decennial(
   geography = "block group",
   state = "New York",
   county = "Kings",
-  variables = "P1_006N",
+  variables = c(total = "P1_001N", asian = "P1_006N"),
   sumfile = "pl",
   year = 2020
 ) %>%
-  select(GEOID, pop_asian = value)
+  select(-NAME) %>%
+  rename(group = variable, pop = value)
 
 output <- inner_join(
-  bg2020_pop_2010_asian,
-  bg_pop_2020_asian,
-  by = "GEOID",
+  bg2020_pop_2010,
+  bg_pop_2020,
+  by = c("GEOID", "group"),
   suffix = c("_2010", "_2020")
 )
 
 #' Solid.
 output %>% head
 
-#' Sanity check: did Brooklyn's Asian population grow by 43%? The output below shows what fold the population increased by in our analysis.
+#' Sanity check: did Brooklyn's Asian population grow by 43% while the rest of the county grew 9%? The output below shows what fold the population increased by in our analysis.
 
 output %>%
-  summarize(fold = sum(pop_asian_2020) / sum(pop_asian_2010, na.rm = T))
+  group_by(group) %>%
+  summarize(fold = sum(pop_2020, na.rm = T) / sum(pop_2010, na.rm = T))
 
-#' 1.4248. Close enough?
-#' 
 #' Write out the output if desired.
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -122,4 +156,3 @@ if (length(args) > 0) {
   output %>%
     write.csv(args[[1]], row.names = FALSE)
 }
-
