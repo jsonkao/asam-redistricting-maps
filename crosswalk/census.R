@@ -57,9 +57,9 @@ bg_crosswalk <- blk2020_pop_2010 %>%
 
 bg_crosswalk %>% head
 
-#' Save the crosswalk.
+#' Save the crosswalk in [bg2010_bg2020.csv](https://github.com/jsonkao/asam-redistricting-maps/blob/main/crosswalk/bg2010_bg2020.csv).
 
-bg_crosswalk %>% write.csv("./bg2010_bg2020.csv")
+bg_crosswalk %>% write.csv("./bg2010_bg2020.csv", row.names = FALSE)
 
 #' ### Using the block-group-to-block-group crosswalk
 #'

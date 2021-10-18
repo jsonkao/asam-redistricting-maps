@@ -201,7 +201,6 @@ summary {
 suppressPackageStartupMessages(library(dplyr))
 library(tidycensus)
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')</code></pre>
-<pre><code>## To install your API key for use in future sessions, run this function with `install = TRUE`.</code></pre>
 <div id="creating-a-block-group-to-block-group-crosswalk" class="section level3">
 <h3>Creating a block-group-to-block-group crosswalk</h3>
 <p>To interpolate many block-group statistics (e.g. Asian population, White population, Black population), we first make a block-group-to-block-group crosswalk.</p>
@@ -247,8 +246,8 @@ census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')</code></pre>
 ## 4 360470001004 360470001004      1
 ## 5 360470002001 360470002001      1
 ## 6 360470003011 360470003011      1</code></pre>
-<p>Save the crosswalk.</p>
-<pre class="r"><code>bg_crosswalk %&gt;% write.csv(&quot;./bg2010_bg2020.csv&quot;)</code></pre>
+<p>Save the crosswalk in <a href="https://github.com/jsonkao/asam-redistricting-maps/blob/main/crosswalk/bg2010_bg2020.csv">bg2010_bg2020.csv</a>.</p>
+<pre class="r"><code>bg_crosswalk %&gt;% write.csv(&quot;./bg2010_bg2020.csv&quot;, row.names = FALSE)</code></pre>
 </div>
 <div id="using-the-block-group-to-block-group-crosswalk" class="section level3">
 <h3>Using the block-group-to-block-group crosswalk</h3>
