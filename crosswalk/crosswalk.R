@@ -14,12 +14,11 @@ census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 #'
 #' To interpolate many block-group statistics (e.g. Asian population, White population, Black population), we first make a block-group-to-block-group crosswalk.
 #'
-#' First, retrieve block-level population data in Brooklyn in 2010.
+#' First, retrieve block-level population data in 2010.
 
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",
-  county = "Kings",
   variables = "P001001",
   year = 2010
 ) %>%
@@ -28,7 +27,7 @@ blk_pop_2010 <- get_decennial(
 #' Read in the NHGIS 2010 block to 2020 block crosswalk.
 
 blk_crosswalk <-
-  read.csv("./crosswalk/nhgis_blk2010_blk2020_ge_36047.csv") %>%
+  read.csv("./crosswalk/nhgis_blk2010_blk2020.csv") %>%
   mutate(GEOID10 = as.character(GEOID10), GEOID20 = as.character(GEOID20)) %>%
   select(GEOID10, GEOID20, WEIGHT, PAREA)
 
@@ -57,6 +56,9 @@ bg_crosswalk <- blk2020_pop_2010 %>%
 
 bg_crosswalk %>% head
 
-#' Save the crosswalk in [bg2010_bg2020.csv](https://github.com/jsonkao/asam-redistricting-maps/blob/main/crosswalk/bg2010_bg2020.csv).
+#' Save the crosswalk
 
-bg_crosswalk %>% write.csv("./crosswalk/bg2010_bg2020.csv", row.names = FALSE)
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) > 0) {
+  bg_crosswalk %>% write.csv(args[[1]], row.names = FALSE)
+}

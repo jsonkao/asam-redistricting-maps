@@ -10,7 +10,7 @@ library(stringr)
 library(dplyr)
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 
-crosswalk <- read.csv("./crosswalk/bg2010_bg2020.csv") %>%
+crosswalk <- read.csv("./crosswalk/crosswalk.csv") %>%
   mutate(blk_group10 = as.character(blk_group10),
          blk_group20 = as.character(blk_group20))
 
@@ -30,7 +30,7 @@ interpolate <- function(data) {
 pop10_bg20 <- get_decennial(
   geography = "block group",
   state = "New York",
-  county = "Kings",
+  county = c("Kings", "Richmond"),
   variables = c(asiana = "P003005", total = "P001001"),
   year = 2010
 ) %>%
@@ -41,7 +41,7 @@ pop10_bg20 <- get_decennial(
 pop20_bg20 <- get_decennial(
   geography = "block group",
   state = "New York",
-  county = "Kings",
+  county = c("Kings", "Richmond"),
   variables = c(total = "P1_001N", asiana = "P1_006N"),
   sumfile = "pl",
   year = 2020
