@@ -18,9 +18,10 @@ outputs/blkgrp_asians.geojson: mapping/tl_2021_36_bg.shp outputs/blkgrp_asians.c
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
 	-o $@
 
-mapping/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
-	unzip -d mapping $<
+mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
+	unzip -d $(dir $@) $<
 	touch $@
+	rm $<
 
 # Zipfile downloaded from Census TIGER/Line FTP server
 mapping/tl_2021_36_bg.zip:
@@ -34,8 +35,8 @@ mapping/tl_2021_36_bg.zip:
 #
 
 # Main target
-outputs/blkgrp_asians.csv: crosswalk/census.R
-	Rscript crosswalk/census.R $@
+outputs/blkgrp_asians.csv: crosswalk/crosswalk.R
+	Rscript crosswalk/crosswalk.R $@
 
 # Same as original block crosswalk but filtered down to Brooklyn (FIPS = 36047)
 crosswalk/nhgis_blk2010_blk2020_ge_36047.csv: crosswalk/nhgis_blk2010_blk2020_ge_36.csv filter.py
