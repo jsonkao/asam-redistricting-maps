@@ -2,6 +2,7 @@
 
 .RData
 .Rhistory
+.Rproj.user
 
 cvap/*.zip
-.Rproj.user
+data/*.zip
