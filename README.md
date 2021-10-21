@@ -5,3 +5,5 @@ First, it interpolates the 2010 Asian population from 2010 block groups to 2020 
 Next, it joins it with block group geographies and Letters plan geographies. The resulting GeoJSON is at [`mapping/output.geojson`](https://github.com/jsonkao/asam-redistricting-maps/blob/main/mapping/output.geojson).
 
 Some exploratory mapping of that data lives on [Observable](https://observablehq.com/@jsonkao/asam-redistricting-maps).
+
+The Makefile directs all the data downloading and transformation.
