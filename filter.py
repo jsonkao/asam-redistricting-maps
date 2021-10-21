@@ -19,7 +19,7 @@ def filter_crosswalk():
     print(next(f).strip())
     block_id_len = len("360010001001000")
     for line in f:
-        if line[block_id_len + 1 : block_id_len + 6] in [BROOKLYN_FIPS, RICHMOND_FIPS]:
+        if True or line[block_id_len + 1 : block_id_len + 6] in [BROOKLYN_FIPS, RICHMOND_FIPS]:
             print(line.strip())
 
 

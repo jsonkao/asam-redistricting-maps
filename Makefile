@@ -67,7 +67,7 @@ data/data.csv: data/data.R crosswalk/crosswalk.csv
 # - Helpful resource: https://forum.ipums.org/t/can-i-use-nhgis-crosswalk-for-block-group-level-data/2750
 #
 
-crosswalk/crosswalk.csv: crosswalk/crosswalk.R
+crosswalk/crosswalk.csv: crosswalk/crosswalk.R crosswalk/nhgis_blk2010_blk2020.csv
 	Rscript $< $@
 
 # Same as original block crosswalk but filtered down to areas of interest
