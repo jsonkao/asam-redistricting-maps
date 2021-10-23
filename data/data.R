@@ -56,14 +56,14 @@ pop20_bg20 <- get_decennial(
 #'
 #' Also: I don't think these both are actually on 2010 Decennial block group geography. It [seems like](https://www.census.gov/programs-surveys/acs/geography-acs/geography-boundaries-by-year.html) they're updated every year...
 
-vap10_bg20 <- read.csv("./cvap/CVAP_2010.csv") %>%
+cvap10_bg20 <- read.csv("./cvap/CVAP_2010.csv") %>%
   mutate(GEOID = substr(GEOID, 8, 19)) %>%
   select(GEOID, group = LNTITLE, value = CVAP_EST) %>%
   mutate(group = str_replace(group, "Asian Alone", "asiana")) %>%
   mutate(group = str_replace(group, "Total", "total")) %>%
   interpolate()
 
-vap19_bg20 <- read.csv("./cvap/CVAP_2019.csv") %>%
+cvap19_bg20 <- read.csv("./cvap/CVAP_2019.csv") %>%
   mutate(GEOID = substr(geoid, 8, 19)) %>%
   select(GEOID, group = lntitle, value = cvap_est) %>%
   mutate(group = str_replace(group, "Asian Alone", "asiana")) %>%
@@ -96,8 +96,8 @@ consolidated <- inner_join(
   ),
   # Citizen VAP by race
   inner_join(
-    vap10_bg20 %>% rename(vap = value),
-    vap19_bg20 %>% rename(vap = value),
+    cvap10_bg20 %>% rename(cvap = value),
+    cvap19_bg20 %>% rename(cvap = value),
     by = c("GEOID", "group"),
     suffix = c("10", "19")
   ),
@@ -107,11 +107,11 @@ consolidated <- inner_join(
 #' # Generating desirable output
 
 output <- consolidated %>%
-  select(GEOID, group, starts_with("vap")) %>%
-  tidyr::pivot_wider(names_from = group, values_from = c(vap10, vap19)) %>%
+  select(GEOID, group, starts_with("cvap")) %>%
+  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19)) %>%
   mutate(
-    vap10_asiana_prop = vap10_asiana / vap10_total,
-    vap19_asiana_prop = vap19_asiana / vap19_total
+    cvap10_asiana_prop = cvap10_asiana / cvap10_total,
+    cvap19_asiana_prop = cvap19_asiana / cvap19_total
   )
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
