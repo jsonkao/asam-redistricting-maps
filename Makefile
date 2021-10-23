@@ -58,7 +58,8 @@ mapping/tl_2021_36_bg.zip:
 # - The data that goes into mapping ifles
 #
 
-data/data.csv: data/data.R crosswalk/crosswalk.csv
+data: data/data.csv
+data/data.csv: data/data.R crosswalk/crosswalk.csv cvap/CVAP_2010.csv cvap/CVAP_2019.csv
 	Rscript $< $@
 
 #
@@ -67,6 +68,7 @@ data/data.csv: data/data.R crosswalk/crosswalk.csv
 # - Helpful resource: https://forum.ipums.org/t/can-i-use-nhgis-crosswalk-for-block-group-level-data/2750
 #
 
+crosswalk: crosswalk/crosswalk.csv
 crosswalk/crosswalk.csv: crosswalk/crosswalk.R crosswalk/nhgis_blk2010_blk2020.csv
 	Rscript $< $@
 
@@ -79,10 +81,8 @@ crosswalk/nhgis_blk2010_blk2020_ge_36.csv:
 	unzip -d crosswalk crosswalk/nhgis_blk2010_blk2020_ge_36.zip
 
 #
-# VOTING AGE POPULATION
+# CITIZEN VOTING AGE POPULATION
 #
-
-cvap: cvap/CVAP_2010.csv cvap/CVAP_2019.csv
 
 cvap/CVAP_2010.csv: cvap/CVAP_2010.zip filter.py
 	unzip -d cvap $<

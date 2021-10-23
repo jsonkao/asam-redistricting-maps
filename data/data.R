@@ -5,9 +5,10 @@
 #' ---
 
 #' # Libraries, helper functions
+
 library(tidycensus)
 library(stringr)
-library(dplyr)
+suppressPackageStartupMessages(library(dplyr))
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 
 crosswalk <- read.csv("./crosswalk/crosswalk.csv") %>%
@@ -24,29 +25,29 @@ interpolate <- function(data) {
     summarize(value = sum(value, na.rm = T))
 }
 
-#' # Decennial population data
+#' # Decennial population data; commented out bc we only care about CVAP populations now
 
-# 2010 population data interpolated to 2020 block groups (asiana = Asian alone)
-pop10_bg20 <- get_decennial(
-  geography = "block group",
-  state = "New York",
-  county = c("Kings", "Richmond"),
-  variables = c(asiana = "P003005", total = "P001001"),
-  year = 2010
-) %>%
-  select(GEOID, group = variable, value) %>%
-  interpolate()
-
-# 2020 population data in 2020 block groups
-pop20_bg20 <- get_decennial(
-  geography = "block group",
-  state = "New York",
-  county = c("Kings", "Richmond"),
-  variables = c(total = "P1_001N", asiana = "P1_006N"),
-  sumfile = "pl",
-  year = 2020
-) %>%
-  select(GEOID, group = variable, value)
+# 2010 population data interpolated to 2020 block groups (asian = Asian alone)
+# pop10_bg20 <- get_decennial(
+#   geography = "block group",
+#   state = "New York",
+#   county = "Kings",
+#   variables = c(asian = "P003005", total = "P001001"),
+#   year = 2010
+# ) %>%
+#   select(GEOID, group = variable, value) %>%
+#   interpolate()
+# 
+# # 2020 population data in 2020 block groups
+# pop20_bg20 <- get_decennial(
+#   geography = "block group",
+#   state = "New York",
+#   county = "Kings",
+#   variables = c(total = "P1_001N", asian = "P1_006N"),
+#   sumfile = "pl",
+#   year = 2020
+# ) %>%
+#   select(GEOID, group = variable, value)
 
 #' # CVAP Data
 
@@ -56,19 +57,30 @@ pop20_bg20 <- get_decennial(
 #'
 #' Also: I don't think these both are actually on 2010 Decennial block group geography. It [seems like](https://www.census.gov/programs-surveys/acs/geography-acs/geography-boundaries-by-year.html) they're updated every year...
 
-cvap10_bg20 <- read.csv("./cvap/CVAP_2010.csv") %>%
-  mutate(GEOID = substr(GEOID, 8, 19)) %>%
-  select(GEOID, group = LNTITLE, value = CVAP_EST) %>%
-  mutate(group = str_replace(group, "Asian Alone", "asiana")) %>%
-  mutate(group = str_replace(group, "Total", "total")) %>%
-  interpolate()
+read_cvap <- function(fname) {
+  data <- read.csv(fname)
+  if ("LNTITLE" %in% colnames(data)) {
+    data <- data %>% select(GEOID, group = LNTITLE, value = CVAP_EST)
+  } else {
+    data <- data %>% select(GEOID = geoid, group = lntitle, value = cvap_est)
+  }
+  data %>%
+    mutate(GEOID = substr(GEOID, 8, 19)) %>%
+    mutate(group = str_replace(group, "Asian Alone", "asian")) %>%
+    mutate(group = str_replace(group, "Black or African American Alone", "black")) %>%
+    mutate(group = str_replace(group, "Hispanic or Latino", "hispanic")) %>%
+    mutate(group = str_replace(group, "Total", "total")) %>%
+    filter(group %in% c("asian", "black", "hispanic", "total")) %>% 
+    interpolate() %>% 
+    rename(cvap = value) %>% 
+    arrange(GEOID, group) %>% 
+    group_by(GEOID) %>% 
+    mutate(prop = cvap / last(cvap)) %>% 
+    ungroup()
+}
 
-cvap19_bg20 <- read.csv("./cvap/CVAP_2019.csv") %>%
-  mutate(GEOID = substr(geoid, 8, 19)) %>%
-  select(GEOID, group = lntitle, value = cvap_est) %>%
-  mutate(group = str_replace(group, "Asian Alone", "asiana")) %>%
-  mutate(group = str_replace(group, "Total", "total")) %>%
-  interpolate()
+cvap10_bg20 <- read_cvap("./cvap/CVAP_2010.csv")
+cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 
 #' # TODO: ACS Data
 
@@ -86,33 +98,34 @@ cvap19_bg20 <- read.csv("./cvap/CVAP_2019.csv") %>%
 
 #' # Data consolidation
 
+# consolidated <- inner_join(
+#   # Decennial populations by race
+#   inner_join(
+#     pop10_bg20 %>% rename(pop = value),
+#     pop20_bg20 %>% rename(pop = value),
+#     by = c("GEOID", "group"),
+#     suffix = c("10", "20")
+#   ),
+#   # Citizen VAP by race
+#   inner_join(
+#     cvap10_bg20,
+#     cvap19_bg20,
+#     by = c("GEOID", "group"),
+#     suffix = c("10", "19")
+#   ),
+#   by = c("GEOID", "group")
+# )
+
 consolidated <- inner_join(
-  # Decennial populations by race
-  inner_join(
-    pop10_bg20 %>% rename(pop = value),
-    pop20_bg20 %>% rename(pop = value),
-    by = c("GEOID", "group"),
-    suffix = c("10", "20")
-  ),
-  # Citizen VAP by race
-  inner_join(
-    cvap10_bg20 %>% rename(cvap = value),
-    cvap19_bg20 %>% rename(cvap = value),
-    by = c("GEOID", "group"),
-    suffix = c("10", "19")
-  ),
-  by = c("GEOID", "group")
+  cvap10_bg20,
+  cvap19_bg20,
+  by = c("GEOID", "group"),
+  suffix = c("10", "19")
 )
 
 #' # Generating desirable output
 
-output <- consolidated %>%
-  select(GEOID, group, starts_with("cvap")) %>%
-  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19)) %>%
-  mutate(
-    cvap10_asiana_prop = cvap10_asiana / cvap10_total,
-    cvap19_asiana_prop = cvap19_asiana / cvap19_total
-  )
+output <- consolidated %>% tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19))
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
 

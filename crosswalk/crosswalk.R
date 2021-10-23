@@ -19,6 +19,7 @@ census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",
+  county = "Kings",
   variables = "P001001",
   year = 2010
 ) %>%
