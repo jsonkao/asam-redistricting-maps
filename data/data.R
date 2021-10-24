@@ -28,26 +28,27 @@ interpolate <- function(data) {
 #' # Decennial population data; commented out bc we only care about CVAP populations now
 
 # 2010 population data interpolated to 2020 block groups (asian = Asian alone)
-# pop10_bg20 <- get_decennial(
-#   geography = "block group",
-#   state = "New York",
-#   county = "Kings",
-#   variables = c(asian = "P003005", total = "P001001"),
-#   year = 2010
-# ) %>%
-#   select(GEOID, group = variable, value) %>%
-#   interpolate()
-# 
-# # 2020 population data in 2020 block groups
-# pop20_bg20 <- get_decennial(
-#   geography = "block group",
-#   state = "New York",
-#   county = "Kings",
-#   variables = c(total = "P1_001N", asian = "P1_006N"),
-#   sumfile = "pl",
-#   year = 2020
-# ) %>%
-#   select(GEOID, group = variable, value)
+pop10_bg20 <- get_decennial(
+  geography = "block group",
+  state = "New York",
+  county = "Kings",
+  variables = c(asian = "P003005", total = "P001001", white = "P003002", black = "P003003", hispanic = "P009002"),
+  year = 2010
+) %>%
+  select(GEOID, group = variable, value) %>%
+  interpolate() %>% 
+  rename(pop = value)
+
+# 2020 population data in 2020 block groups
+pop20_bg20 <- get_decennial(
+  geography = "block group",
+  state = "New York",
+  county = "Kings",
+  variables = c(total = "P1_001N", asian = "P1_006N", white = "P1_003N", black = "P1_004N", hispanic = "P2_002N"),
+  sumfile = "pl",
+  year = 2020
+) %>%
+  select(GEOID, group = variable, pop = value)
 
 #' # CVAP Data
 
@@ -124,12 +125,19 @@ consolidated <- inner_join(
   cvap19_bg20,
   by = c("GEOID", "group"),
   suffix = c("10", "19")
-)
+) %>%
+  inner_join(inner_join(
+    pop10_bg20,
+    pop20_bg20,
+    by = c("GEOID", "group"),
+    suffix = c("10", "20")
+  ),
+  by = c("GEOID", "group"))
 
 #' # Generating desirable output
 
 output <- consolidated %>%
-  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19))
+  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19, pop10, pop20))
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
 

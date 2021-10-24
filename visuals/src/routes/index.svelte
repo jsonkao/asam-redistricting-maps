@@ -1,6 +1,6 @@
 <script context="module">
 	export async function load({ fetch }) {
-		const data = await fetch('/census.topojson');
+		const data = await fetch('/output.topojson');
 		return {
 			props: {
 				topoData: await data.json()
@@ -15,9 +15,8 @@
 
 	export let topoData;
 
-	const data = feature(topoData, topoData.objects.census);
-	const dataMesh = mesh(topoData, topoData.objects.census, (a, b) => a !== b);
-	const outline = mesh(topoData, topoData.objects.census, (a, b) => a === b);
+	const obj = Object.values(topoData.objects)[0];
+	const data = feature(topoData, obj).features;
 	const path = geoPath();
 
 	const colors = {
@@ -30,11 +29,19 @@
 
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
-	function color({ properties: d }, year) {
-		const total = d[`cvap${year}_total`];
+	let period = 'past';
+	let metric = 'cvap';
+	$: year = period === 'past' ? 10 : metric === 'cvap' ? 19 : 20;
+
+	function color({ properties: d }) {
+		const total = d[`${metric}${year}_total`];
 		if (total <= 10) return '#fff';
 
-		const p = (x) => d[`prop${year}_${x}`];
+		const p = (g) =>
+			metric === 'cvap'
+				? d[`prop${year}_${g}`]
+				: d[`${metric}${year}_${g}`] / d[`${metric}${year}_total`];
+
 		const majority = groups.filter((g) => p(g) > 0.5)[0];
 		if (majority !== undefined) {
 			return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
@@ -45,18 +52,56 @@
 		return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 	}
 
-	let year = 19;
-
 	let yOffset = 0;
+
+	$: sums = [...groups, 'total'].reduce((acc, g) => {
+		acc[g] = 0;
+		data.forEach(({ properties: d }) => {
+			if (d.DISTRICT === 'G') acc[g] += d[`${metric}${year}_${g}`];
+		});
+		return acc;
+	}, {});
 </script>
 
 <div class="container">
-	{#each [10, 19] as y}
-		<label>
-			<input type="radio" bind:group={year} name="year" value={y} />
-			{2000 + y}
-		</label>
-	{/each}
+	<div class="controls">
+		{#each ['past', 'present'] as p}
+			<label>
+				<input type="radio" bind:group={period} name="period" value={p} />
+				{p}
+			</label>
+		{/each}
+		<br />
+		{#each ['cvap', 'pop'] as m}
+			<label>
+				<input type="radio" bind:group={metric} name="metric" value={m} />
+				{m}
+			</label>
+		{/each}
+	</div>
+
+	<div class="map-container">
+		<svg width="600" viewBox="0 {yOffset} 975 {1040 - yOffset}">
+			<g>
+				{#each data as f}
+					<path class="block-group" d={path(f)} fill={color(f, metric, year)} />
+				{/each}
+			</g>
+			<g class="meshes">
+				<path class="mesh" d={path(mesh(topoData, obj, (a, b) => a !== b))} />
+				<path
+					style="stroke: #bbb; stroke-width: .6;"
+					d={path(mesh(topoData, obj, (a, b) => a === b))}
+				/>
+				<path
+					style="stroke: black;"
+					d={path(mesh(topoData, obj, (a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
+				/>
+			</g>
+		</svg>
+	</div>
+
+	<p style="margin: 0;">asian pct: {Math.round(sums['asian'] / sums.total * 1e4) / 1e2}%</p>
 
 	<div class="legend">
 		{#each groups as grp}
@@ -67,22 +112,6 @@
 			</div>
 		{/each}
 	</div>
-
-	<div>
-		<svg width="700" viewBox="0 {yOffset} 975 {1040 - yOffset}">
-			<g>
-				{#each data.features as f}
-					<path class="block-group" d={path(f)} fill={color(f, year)} />
-				{/each}
-			</g>
-			<g>
-				<path class="mesh" d={path(dataMesh)} />
-			</g>
-			<g>
-				<path style="stroke: #bbb; stroke-width: .6; fill: none;" d={path(outline)} />
-			</g>
-		</svg>
-	</div>
 </div>
 
 <style>
@@ -91,19 +120,28 @@
 		font-family: Overpass;
 	}
 
+	.controls {
+		position: absolute;
+		top: 5px;
+		left: 5px;
+	}
+
 	svg {
 		margin-top: 20px;
 	}
 
-	.mesh {
+	.meshes path {
 		fill: none;
-		stroke: #fff;
-		stroke-width: 0.2;
 		stroke-linejoin: round;
 	}
 
+	.mesh {
+		stroke: #fff;
+		stroke-width: 0.2;
+	}
+
 	.block-group {
-		transition-duration: 0.3s;
+		transition-duration: 0.2s;
 	}
 
 	.row {

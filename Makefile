@@ -35,7 +35,7 @@ visuals/static/%: mapping/%
 # Join with plans
 mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 	mapshaper $< \
-	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,DEVIATION \
+	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,DEVIATION largest-overlap \
 	-o bbox $@
 
 # Filter geography down; join it with census data
