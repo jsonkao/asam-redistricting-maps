@@ -21,8 +21,9 @@ plans/%.zip:
 # - Join block group shapefile with data about Asian population
 #
 
-map_output: mapping/output.topojson
-map_census: mapping/census.topojson
+map_static: visuals/static/census.topojson
+visuals/static/%: mapping/%
+	cp $< $@
 
 # Makes files web-friendly
 %.topojson: %.geojson
