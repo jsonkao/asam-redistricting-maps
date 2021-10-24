@@ -22,6 +22,7 @@ plans/%.zip:
 #
 
 map_output: mapping/output.topojson
+map_census: mapping/census.topojson
 
 # Makes files web-friendly
 %.topojson: %.geojson
@@ -39,7 +40,7 @@ mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 # Filter geography down; join it with census data
 mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	mapshaper $< \
-	-filter "['047', '085'].includes(COUNTYFP) && ALAND > 0" \
+	-filter "'047' === COUNTYFP && ALAND > 0" \
 	-filter-fields GEOID \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
 	-o $@

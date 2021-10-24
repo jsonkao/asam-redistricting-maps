@@ -67,15 +67,18 @@ read_cvap <- function(fname) {
   data %>%
     mutate(GEOID = substr(GEOID, 8, 19)) %>%
     mutate(group = str_replace(group, "Asian Alone", "asian")) %>%
+    mutate(group = str_replace(group, "White Alone", "white")) %>%
     mutate(group = str_replace(group, "Black or African American Alone", "black")) %>%
     mutate(group = str_replace(group, "Hispanic or Latino", "hispanic")) %>%
     mutate(group = str_replace(group, "Total", "total")) %>%
-    filter(group %in% c("asian", "black", "hispanic", "total")) %>% 
+    filter(group %in% c("asian", "black", "hispanic", "white", "total")) %>% 
     interpolate() %>% 
     rename(cvap = value) %>% 
+    mutate(group = str_replace(group, "total", "ZZZ")) %>% 
     arrange(GEOID, group) %>% 
     group_by(GEOID) %>% 
     mutate(prop = cvap / last(cvap)) %>% 
+    mutate(group = str_replace(group, "ZZZ", "total")) %>% 
     ungroup()
 }
 
@@ -125,7 +128,8 @@ consolidated <- inner_join(
 
 #' # Generating desirable output
 
-output <- consolidated %>% tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19))
+output <- consolidated %>%
+  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19))
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
 
