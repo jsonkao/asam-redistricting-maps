@@ -1,17 +1,39 @@
 <script context="module">
-	import { feature, neighbors as topoNeighbors } from 'topojson-client';
+	import { feature, neighbors } from 'topojson-client';
 
+	/**
+	 * A function that computes all constant data
+	 */
 	export async function load({ fetch }) {
-		const data = await fetch('/output.topojson');
-		const topoData = await data.json();
+		// Fetch TopoJSON data; do necessary transformations
+		const req = await fetch('/output.topojson');
+		const topoData = await req.json();
 		const obj = Object.values(topoData.objects)[0];
+		const data = feature(topoData, obj).features;
+
+		// Establish the static variables and the variables that change over time
+		const dynamicVars = ['cvap', 'pop'];
+		const staticVars = [
+			...data.reduce((acc, val) => {
+				const fields = Object.keys(val.properties)
+					.filter(
+						// District plans' fields are all uppercase
+						(k) => [...dynamicVars, 'GEOID'].every((v) => !k.includes(v)) && k === k.toLowerCase()
+					)
+					.map((k) => k.split('_')[0]);
+				return new Set([...acc, ...fields]);
+			}, [])
+		];
+		console.log(data[0]);
 
 		return {
 			props: {
 				topoData,
 				obj,
-				neighbors: topoNeighbors(obj.geometries),
-				data: feature(topoData, obj).features
+				data,
+				neighbors: neighbors(obj.geometries),
+				dynamicVars,
+				staticVars
 			}
 		};
 	}
@@ -20,41 +42,21 @@
 <script>
 	import { mesh } from 'topojson-client';
 	import { geoPath } from 'd3-geo';
-	import { interpolateBlues } from 'd3-scale-chromatic';
+	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 
-	export let topoData, obj, neighbors, data;
+	export let topoData, obj, neighbors, data, dynamicVars, staticVars;
 
 	const path = geoPath();
 
-	const dynamicVars = ['cvap', 'pop'];
-	const staticVars = [
-		...data.reduce((acc, val) => {
-			const fields = Object.keys(val.properties)
-				.filter(
-					// District plans' fields are all uppercase
-					(k) => [...dynamicVars, 'GEOID'].every((v) => !k.includes(v)) && k === k.toLowerCase()
-				)
-				.map((k) => k.split('_')[0]);
-			return new Set([...acc, ...fields]);
-		}, [])
-	];
-
 	function neighbor(i) {
-		const D = k => data[k].properties.DISTRICT; // district accessor
-		const districts = [...new Set(neighbors[i].map(D).filter(d => d !== D(i)))]
+		const D = (k) => data[k].properties.DISTRICT; // district accessor
+		const districts = [...new Set(neighbors[i].map(D).filter((d) => d !== D(i)))];
 		if (districts.length === 1) {
 			obj.geometries[i].properties.DISTRICT = districts[0];
 			obj = obj;
 		}
 	}
-
-	const breaks = {};
-	const isNum = (x) => !isNaN(x) && x !== null;
-	const getBreaks = (v, p) => {
-		if (v in breaks) return breaks[v];
-		return (breaks[v] = ckmeans(data.map((f) => p(f.properties)).filter(isNum), 6));
-	};
 
 	const colors = {
 		black: '#9fd400',
@@ -63,7 +65,6 @@
 		white: '#73B2FF'
 	}; // from Racial Dot Map, see https://github.com/unorthodox123/RacialDotMap/blob/master/dotmap.pde#L168
 	const levels = ['66', '99', 'dd'];
-
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
 	let period = 'past';
@@ -72,28 +73,31 @@
 		? variable
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
+	const breaksCache = {};
+	const isNum = (x) => !isNaN(x) && x !== null;
+	const vGen = (g) => (d) => d[`${metric}_${g}`] / d[`${metric}_total`];
+	$: getValue = {
+		income: (d) => d[metric],
+		hhlang: vGen('asian'),
+		graduates: vGen('hs_grad'),
+		families: vGen('benefits')
+	}[metric];
+	$: breaks =
+		breaksCache[metric] ||
+		!staticVars.includes(metric) || // Don't compute breaks for dynamic variables
+		(breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
+
 	function color({ properties: d }) {
 		const total = d[`${metric}_total`];
 
-		// Value accessor generators
-		const vGen = (g) => (d) => d[`${metric}_${g}`] / d[`${metric}_total`];
-		const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
-
 		if (staticVars.includes(metric)) {
-			const v = {
-				income: (d) => d[metric],
-				hhlang: vGen('asian'),
-				graduates: vGen('hs_grad'),
-				families: vGen('benefits')
-			}[metric];
-			const breaks = getBreaks(metric, v);
-			if (!isNum(v(d))) return '#ccc';
+			if (!isNum(getValue(d))) return '#ccc';
 			for (let i = 1; i < breaks.length; i++)
-				if (v(d) < breaks[i]) return interpolateBlues(i / breaks.length);
-			return interpolateBlues(1);
+				if (getValue(d) < breaks[i]) return schemeBlues[breaks.length][i];
+			return schemeBlues[breaks.length][breaks.length - 1];
 		} else {
 			if (total <= 10) return '#fff';
-			// Darkened color scale
+			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 			const majority = groups.filter((g) => p(g) > 0.5)[0];
 			if (majority !== undefined) {
 				return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
@@ -122,25 +126,28 @@
 
 <div class="container">
 	<div class="controls">
-		{#each ['past', 'present'] as p}
-			<label>
-				<input type="radio" bind:group={period} name="period" value={p} />
-				{p}
-			</label>
-		{/each}
-		<br />
-		{#each [...dynamicVars, ...staticVars] as v}
+		{#each [...dynamicVars, ...staticVars] as v, i}
 			<label>
 				<input type="radio" bind:group={variable} name="variable" value={v} />
 				{v}
 			</label>
+			{#if i === 3} <br /> {/if}
 		{/each}
+		{#if dynamicVars.includes(variable)}
+			<br />
+			{#each ['past', 'present'] as p}
+				<label>
+					<input type="radio" bind:group={period} name="period" value={p} />
+					{p}
+				</label>
+			{/each}
+		{/if}
 	</div>
 
 	<div class="map-container">
-		<svg width="600" viewBox="0 {yOffset} 975 {1040 - yOffset}">
+		<svg width="800" viewBox="0 {yOffset} 975 {1040 - yOffset}">
 			<g>
-				{#each data as f, i}
+				{#each data as f, i (f.properties.GEOID)}
 					<path
 						class="block-group"
 						d={path(f)}
@@ -185,13 +192,14 @@
 	}
 
 	.controls {
-		position: absolute;
+		position: sticky;
 		top: 5px;
 		left: 5px;
 	}
 
 	svg {
-		margin-top: 20px;
+		margin: 20px auto 0;
+		display: block;
 	}
 
 	.meshes path {
