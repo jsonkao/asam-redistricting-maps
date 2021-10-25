@@ -74,13 +74,7 @@ read_cvap <- function(fname) {
     mutate(group = str_replace(group, "Total", "total")) %>%
     filter(group %in% c("asian", "black", "hispanic", "white", "total")) %>% 
     interpolate() %>% 
-    rename(cvap = value) %>% 
-    mutate(group = str_replace(group, "total", "ZZZ")) %>% 
-    arrange(GEOID, group) %>% 
-    group_by(GEOID) %>% 
-    mutate(prop = cvap / last(cvap)) %>% 
-    mutate(group = str_replace(group, "ZZZ", "total")) %>% 
-    ungroup()
+    rename(cvap = value)
 }
 
 cvap10_bg20 <- read_cvap("./cvap/CVAP_2010.csv")
@@ -91,7 +85,19 @@ cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 #' ## Language
 
 # This can get language spoken at home by ability to speak English and by age
-# load_variables(2019, "acs5", cache = T) %>% filter(grepl(toupper("language spoken at home by ability"), concept)) %>% View()
+# load_variables(2019, "acs5") %>% filter(grepl(toupper("language spoken at home by ability"), concept)) %>% View()
+# load_variables(2019, "acs5") %>% filter(grepl("NATIVITY BY LANGUAGE SPOKEN AT HOME", concept)) %>% View()
+# B16004 is individual-level language ability. Easier to start with C16002 (household-level)
+
+# TODO: MISSING GEOGRAPHIC STUFF
+hhlang20_bg20 <- get_acs(
+  geography = "block group",
+  state = "New York",
+  county = "Kings",
+  variables = c(total = "C16002_001", asian = "C16002_010"), # 'asian' means API language HHs with LEP
+  year = 2019
+) %>% 
+  select(GEOID, group = variable, hhlang = estimate)
 
 #' ## Educational attainment
 
@@ -132,12 +138,14 @@ consolidated <- inner_join(
     by = c("GEOID", "group"),
     suffix = c("10", "20")
   ),
-  by = c("GEOID", "group"))
+  by = c("GEOID", "group")) %>% 
+  left_join(hhlang20_bg20, by = c("GEOID", "group"))
 
 #' # Generating desirable output
 
 output <- consolidated %>%
-  tidyr::pivot_wider(names_from = group, values_from = c(cvap10, cvap19, prop10, prop19, pop10, pop20))
+  tidyr::pivot_wider(names_from = group, values_from = !c(GEOID, group)) %>% 
+  select(!c(hhlang_black, hhlang_hispanic, hhlang_white))
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
 

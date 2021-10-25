@@ -5,6 +5,7 @@
 library(tidyverse)
 library(Ckmeans.1d.dp)
 
+# Plurality strength
 consolidated %>% 
   filter(group != "total") %>% 
   arrange(GEOID, -prop19) %>% 
@@ -32,4 +33,13 @@ centers <- ckmeans$centers
 centers[-length(centers)] + diff(centers) / 2
 
 
-        
+# Continuous scale for household language
+
+centers <- ((
+  output %>%
+    filter(hhlang_total > 0) %>%
+    mutate(prop = hhlang_asian / hhlang_total) %>%
+    pull(prop)
+) %>% 
+  Ckmeans.1d.dp(k = 6) )$centers
+centers[-length(centers)] + diff(centers) / 2        

@@ -4,6 +4,7 @@ specifiers:
   '@sveltejs/adapter-static': ^1.0.0-next.0
   '@sveltejs/kit': next
   d3-geo: ^3.0.1
+  d3-scale-chromatic: ^3.0.0
   d3-selection: ^3.0.0
   d3-transition: ^3.0.1
   eslint: ^7.32.0
@@ -16,6 +17,7 @@ specifiers:
 
 dependencies:
   d3-geo: 3.0.1
+  d3-scale-chromatic: 3.0.0
   d3-selection: 3.0.0
   d3-transition: 3.0.1_d3-selection@3.0.0
   topojson-client: 3.1.0
@@ -316,6 +318,14 @@ packages:
     engines: {node: '>=12'}
     dependencies:
       d3-color: 3.0.1
+    dev: false
+
+  /d3-scale-chromatic/3.0.0:
+    resolution: {integrity: sha512-Lx9thtxAKrO2Pq6OO2Ua474opeziKr279P/TKZsMAhYyNDD3EnCffdbgeSYN5O7m2ByQsxtuP2CSDczNUIZ22g==}
+    engines: {node: '>=12'}
+    dependencies:
+      d3-color: 3.0.1
+      d3-interpolate: 3.0.1
     dev: false
 
   /d3-selection/3.0.0:

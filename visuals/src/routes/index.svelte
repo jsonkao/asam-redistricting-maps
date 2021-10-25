@@ -12,6 +12,7 @@
 <script>
 	import { feature, mesh } from 'topojson-client';
 	import { geoPath } from 'd3-geo';
+	import { interpolateBlues } from 'd3-scale-chromatic';
 
 	export let topoData;
 
@@ -30,35 +31,44 @@
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
 	let period = 'past';
-	let metric = 'cvap';
-	$: year = period === 'past' ? 10 : metric === 'cvap' ? 19 : 20;
+	let variable = 'hhlang';
+	$: metric =
+		variable +
+		(variable === 'hhlang' ? '' : period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	function color({ properties: d }) {
-		const total = d[`${metric}${year}_total`];
-		if (total <= 10) return '#fff';
+		const total = d[`${metric}_total`];
 
-		const p = (g) =>
-			metric === 'cvap'
-				? d[`prop${year}_${g}`]
-				: d[`${metric}${year}_${g}`] / d[`${metric}${year}_total`];
+		const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 
-		const majority = groups.filter((g) => p(g) > 0.5)[0];
-		if (majority !== undefined) {
-			return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
+		if (['hhlang'].includes(variable)) {
+      const breaks = [0.02471019, 0.07920249, 0.15186596, 0.26601557, 0.43905100, 0.65]; // straight from explore.R
+      for (let i = 1; i < breaks.length; i++)
+        if (p('asian') < breaks[i]) return interpolateBlues(i / breaks.length)
+      return 'grey';
+		} else {
+		  if (total <= 10) return '#fff';
+			// Darkened color scale
+			const majority = groups.filter((g) => p(g) > 0.5)[0];
+			if (majority !== undefined) {
+				return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
+			}
+
+			const pluralities = groups.sort((a, b) => p(b) - p(a));
+			const distance = p(pluralities[0]) - p(pluralities[1]);
+			return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 		}
-
-		const pluralities = groups.sort((a, b) => p(b) - p(a));
-		const distance = p(pluralities[0]) - p(pluralities[1]);
-		return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 	}
 
 	let yOffset = 0;
 
 	$: sums = [...groups, 'total'].reduce((acc, g) => {
-		acc[g] = 0;
-		data.forEach(({ properties: d }) => {
-			if (d.DISTRICT === 'G') acc[g] += d[`${metric}${year}_${g}`];
-		});
+		if (`${metric}_${g}` in data[0].properties) {
+			acc[g] = 0;
+			data.forEach(({ properties: d }) => {
+				if (d.DISTRICT === 'G') acc[g] += d[`${metric}_${g}`];
+			});
+		}
 		return acc;
 	}, {});
 </script>
@@ -72,10 +82,10 @@
 			</label>
 		{/each}
 		<br />
-		{#each ['cvap', 'pop'] as m}
+		{#each ['cvap', 'pop', 'hhlang'] as v}
 			<label>
-				<input type="radio" bind:group={metric} name="metric" value={m} />
-				{m}
+				<input type="radio" bind:group={variable} name="variable" value={v} />
+				{v}
 			</label>
 		{/each}
 	</div>
@@ -84,7 +94,7 @@
 		<svg width="600" viewBox="0 {yOffset} 975 {1040 - yOffset}">
 			<g>
 				{#each data as f}
-					<path class="block-group" d={path(f)} fill={color(f, metric, year)} />
+					<path class="block-group" d={path(f)} fill={color(f, variable, period)} />
 				{/each}
 			</g>
 			<g class="meshes">
@@ -101,7 +111,9 @@
 		</svg>
 	</div>
 
-	<p style="margin: 0;">asian pct: {Math.round(sums['asian'] / sums.total * 1e4) / 1e2}%</p>
+	<p style="margin: 0;">
+		asian pct in Senate G: {Math.round((sums['asian'] / sums.total) * 1e4) / 1e2}%
+	</p>
 
 	<div class="legend">
 		{#each groups as grp}
