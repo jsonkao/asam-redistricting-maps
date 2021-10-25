@@ -43,3 +43,12 @@ centers <- ((
 ) %>% 
   Ckmeans.1d.dp(k = 6) )$centers
 centers[-length(centers)] + diff(centers) / 2        
+
+centers <- ((
+  output %>%
+    filter(!is.na(income)) %>% 
+    mutate(prop = income) %>%
+    pull(prop)
+) %>% 
+  Ckmeans.1d.dp(k = 6) )$centers
+centers[-length(centers)] + diff(centers) / 2        

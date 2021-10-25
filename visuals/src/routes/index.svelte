@@ -13,12 +13,35 @@
 	import { feature, mesh } from 'topojson-client';
 	import { geoPath } from 'd3-geo';
 	import { interpolateBlues } from 'd3-scale-chromatic';
+	import ckmeans from 'ckmeans';
 
 	export let topoData;
 
 	const obj = Object.values(topoData.objects)[0];
 	const data = feature(topoData, obj).features;
 	const path = geoPath();
+
+	const dynamicVars = ['cvap', 'pop'];
+	const staticVars = [
+		...data.reduce((acc, val) => {
+			const fields = Object.keys(val.properties)
+				.filter(
+					// District plans' fields are all uppercase
+					(k) => [...dynamicVars, 'GEOID'].every((v) => !k.includes(v)) && k === k.toLowerCase()
+				)
+				.map((k) => k.split('_')[0]);
+			return new Set([...acc, ...fields]);
+		}, [])
+	];
+
+	const breaks = {};
+	const isNum = (x) => !isNaN(x) && x !== null;
+	const getBreaks = (v, p) => {
+		if (v in breaks) return breaks[v];
+		return (breaks[v] = ckmeans(data.map((f) => p(f.properties)).filter(isNum), 6));
+	};
+
+	$: console.log(breaks);
 
 	const colors = {
 		black: '#9fd400',
@@ -32,22 +55,31 @@
 
 	let period = 'past';
 	let variable = 'hhlang';
-	$: metric =
-		variable +
-		(variable === 'hhlang' ? '' : period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
+	$: metric = staticVars.includes(variable)
+		? variable
+		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	function color({ properties: d }) {
 		const total = d[`${metric}_total`];
 
+		// Value accessor generators
+		const vGen = (g) => (d) => d[`${metric}_${g}`] / d[`${metric}_total`];
 		const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 
-		if (['hhlang'].includes(variable)) {
-      const breaks = [0.02471019, 0.07920249, 0.15186596, 0.26601557, 0.43905100, 0.65]; // straight from explore.R
-      for (let i = 1; i < breaks.length; i++)
-        if (p('asian') < breaks[i]) return interpolateBlues(i / breaks.length)
-      return 'grey';
+		if (staticVars.includes(metric)) {
+			const v = {
+				income: d => d[metric],
+				hhlang: vGen('asian'),
+				graduates: vGen('hs_grad'),
+				families: vGen('benefits')
+			}[metric];
+			const breaks = getBreaks(metric, v);
+			if (!isNum(v(d))) return 'grey';
+			for (let i = 1; i < breaks.length; i++)
+				if (v(d) < breaks[i]) return interpolateBlues(i / breaks.length);
+			return interpolateBlues(1);
 		} else {
-		  if (total <= 10) return '#fff';
+			if (total <= 10) return '#fff';
 			// Darkened color scale
 			const majority = groups.filter((g) => p(g) > 0.5)[0];
 			if (majority !== undefined) {
@@ -82,7 +114,7 @@
 			</label>
 		{/each}
 		<br />
-		{#each ['cvap', 'pop', 'hhlang'] as v}
+		{#each [...dynamicVars, ...staticVars] as v}
 			<label>
 				<input type="radio" bind:group={variable} name="variable" value={v} />
 				{v}
@@ -94,7 +126,7 @@
 		<svg width="600" viewBox="0 {yOffset} 975 {1040 - yOffset}">
 			<g>
 				{#each data as f}
-					<path class="block-group" d={path(f)} fill={color(f, variable, period)} />
+					<path class="block-group" d={path(f)} fill={color(f, metric, period)} />
 				{/each}
 			</g>
 			<g class="meshes">

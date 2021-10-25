@@ -20,6 +20,7 @@
   },
   "type": "module",
   "dependencies": {
+    "ckmeans": "^2.1.0",
     "d3-geo": "^3.0.1",
     "d3-scale-chromatic": "^3.0.0",
     "d3-selection": "^3.0.0",

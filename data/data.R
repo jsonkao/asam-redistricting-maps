@@ -80,53 +80,51 @@ read_cvap <- function(fname) {
 cvap10_bg20 <- read_cvap("./cvap/CVAP_2010.csv")
 cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 
-#' # TODO: ACS Data
+#' # ACS Data
+#' 
+#' - Language: Table C16002 (household-level language ability. Easier to start with than B16004, individual-level)
+#'   - Variables: total households and total limited english speaking households that speak Asian/PI languages
+#' - Income: median household income
+#' - Education: B28006 = Educational Attainment By Presence Of A Computer And Types Of Internet Subscription In Household
+#' - Government benefits: B19123 = Family Size By Cash Public Assistance Income Or Households Receiving Food Stamps/Snap Benefits In The Past 12 Months
 
-#' ## Language
+get_acs_brooklyn <- function(vars, name = "") {
+  data <- get_acs(
+    geography = "block group",
+    state = "New York",
+    county = "Kings",
+    variables = vars,
+    year = 2019
+  ) %>% 
+    select(GEOID, group = variable, estimate)
+  if (length(vars) == 1) {
+    data %>%
+      rename(!!name := estimate) %>% 
+      select(-group) %>% 
+      return()
+  } else if (name != "") {
+    data %>%
+      tidyr::pivot_wider(names_from = group, names_glue = paste0(name, "_{group}"), values_from = estimate) %>% 
+      return()
+  }
+}
 
-# This can get language spoken at home by ability to speak English and by age
-# load_variables(2019, "acs5") %>% filter(grepl(toupper("language spoken at home by ability"), concept)) %>% View()
-# load_variables(2019, "acs5") %>% filter(grepl("NATIVITY BY LANGUAGE SPOKEN AT HOME", concept)) %>% View()
-# B16004 is individual-level language ability. Easier to start with C16002 (household-level)
+hhlang <- get_acs_brooklyn(c(total = "C16002_001", asian = "C16002_010"), "hhlang") # 'asian' means API language HHs with LEP
 
-# TODO: MISSING GEOGRAPHIC STUFF
-hhlang20_bg20 <- get_acs(
-  geography = "block group",
-  state = "New York",
-  county = "Kings",
-  variables = c(total = "C16002_001", asian = "C16002_010"), # 'asian' means API language HHs with LEP
-  year = 2019
-) %>% 
-  select(GEOID, group = variable, hhlang = estimate)
+income <- get_acs_brooklyn(c(total = "B19013_001"), "income")
 
-#' ## Educational attainment
+# TODO: incorporate internet subscription and presence of a computer
+education <- get_acs_brooklyn(c(total = "B28006_001", no_hs = "B28006_002", hs_grad = "B28006_008", ba_above = "B28006_014"), "graduates")
 
-# load_variables(2019, "acs5", cache = T) %>% filter(grepl("place of birth by educational attainment", concept))
+benefits <- get_acs_brooklyn(c(total = "B19123_001", benefits = "B19123_002"), "families")
 
-#' ## Others
-#' - "geographic mobility"
+#' # Consolidate static variables
 
-#' # Data consolidation
+static_consolidated <- hhlang %>% inner_join(income) %>% inner_join(education) %>% inner_join(benefits)
 
-# consolidated <- inner_join(
-#   # Decennial populations by race
-#   inner_join(
-#     pop10_bg20 %>% rename(pop = value),
-#     pop20_bg20 %>% rename(pop = value),
-#     by = c("GEOID", "group"),
-#     suffix = c("10", "20")
-#   ),
-#   # Citizen VAP by race
-#   inner_join(
-#     cvap10_bg20,
-#     cvap19_bg20,
-#     by = c("GEOID", "group"),
-#     suffix = c("10", "19")
-#   ),
-#   by = c("GEOID", "group")
-# )
+#' # Consolidate dynamic variables
 
-consolidated <- inner_join(
+dynamic_consolidated <- inner_join(
   cvap10_bg20,
   cvap19_bg20,
   by = c("GEOID", "group"),
@@ -139,13 +137,11 @@ consolidated <- inner_join(
     suffix = c("10", "20")
   ),
   by = c("GEOID", "group")) %>% 
-  left_join(hhlang20_bg20, by = c("GEOID", "group"))
+  tidyr::pivot_wider(names_from = group, values_from = !c(GEOID, group))
 
 #' # Generating desirable output
 
-output <- consolidated %>%
-  tidyr::pivot_wider(names_from = group, values_from = !c(GEOID, group)) %>% 
-  select(!c(hhlang_black, hhlang_hispanic, hhlang_white))
+output <- full_join(static_consolidated, dynamic_consolidated, by = "GEOID")
 
 #' If we're running this on the command line, make the data wide, add some helpful variables, and save it in a file.
 
