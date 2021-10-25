@@ -1,24 +1,30 @@
 <script context="module">
+	import { feature, neighbors as topoNeighbors } from 'topojson-client';
+
 	export async function load({ fetch }) {
 		const data = await fetch('/output.topojson');
+		const topoData = await data.json();
+		const obj = Object.values(topoData.objects)[0];
+
 		return {
 			props: {
-				topoData: await data.json()
+				topoData,
+				obj,
+				neighbors: topoNeighbors(obj.geometries),
+				data: feature(topoData, obj).features
 			}
 		};
 	}
 </script>
 
 <script>
-	import { feature, mesh } from 'topojson-client';
+	import { mesh } from 'topojson-client';
 	import { geoPath } from 'd3-geo';
 	import { interpolateBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 
-	export let topoData;
+	export let topoData, obj, neighbors, data;
 
-	const obj = Object.values(topoData.objects)[0];
-	const data = feature(topoData, obj).features;
 	const path = geoPath();
 
 	const dynamicVars = ['cvap', 'pop'];
@@ -34,14 +40,21 @@
 		}, [])
 	];
 
+	function neighbor(i) {
+		const D = k => data[k].properties.DISTRICT; // district accessor
+		const districts = [...new Set(neighbors[i].map(D).filter(d => d !== D(i)))]
+		if (districts.length === 1) {
+			obj.geometries[i].properties.DISTRICT = districts[0];
+			obj = obj;
+		}
+	}
+
 	const breaks = {};
 	const isNum = (x) => !isNaN(x) && x !== null;
 	const getBreaks = (v, p) => {
 		if (v in breaks) return breaks[v];
 		return (breaks[v] = ckmeans(data.map((f) => p(f.properties)).filter(isNum), 6));
 	};
-
-	$: console.log(breaks);
 
 	const colors = {
 		black: '#9fd400',
@@ -68,13 +81,13 @@
 
 		if (staticVars.includes(metric)) {
 			const v = {
-				income: d => d[metric],
+				income: (d) => d[metric],
 				hhlang: vGen('asian'),
 				graduates: vGen('hs_grad'),
 				families: vGen('benefits')
 			}[metric];
 			const breaks = getBreaks(metric, v);
-			if (!isNum(v(d))) return 'grey';
+			if (!isNum(v(d))) return '#ccc';
 			for (let i = 1; i < breaks.length; i++)
 				if (v(d) < breaks[i]) return interpolateBlues(i / breaks.length);
 			return interpolateBlues(1);
@@ -97,12 +110,14 @@
 	$: sums = [...groups, 'total'].reduce((acc, g) => {
 		if (`${metric}_${g}` in data[0].properties) {
 			acc[g] = 0;
-			data.forEach(({ properties: d }) => {
+			obj.geometries.forEach(({ properties: d }) => {
 				if (d.DISTRICT === 'G') acc[g] += d[`${metric}_${g}`];
 			});
 		}
 		return acc;
 	}, {});
+
+	$: console.log(sums);
 </script>
 
 <div class="container">
@@ -125,8 +140,13 @@
 	<div class="map-container">
 		<svg width="600" viewBox="0 {yOffset} 975 {1040 - yOffset}">
 			<g>
-				{#each data as f}
-					<path class="block-group" d={path(f)} fill={color(f, metric, period)} />
+				{#each data as f, i}
+					<path
+						class="block-group"
+						d={path(f)}
+						fill={color(f, metric, period)}
+						on:click={() => neighbor(i)}
+					/>
 				{/each}
 			</g>
 			<g class="meshes">
