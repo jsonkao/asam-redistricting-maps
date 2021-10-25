@@ -21,7 +21,7 @@ plans/%.zip:
 # - Join block group shapefile with data about Asian population
 #
 
-map_static: visuals/static/census.topojson
+map_static: visuals/static/output.topojson
 visuals/static/%: mapping/%
 	cp $< $@
 
@@ -35,7 +35,7 @@ visuals/static/%: mapping/%
 # Join with plans
 mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 	mapshaper $< \
-	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,DEVIATION largest-overlap \
+	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,IDEAL_VALU largest-overlap \
 	-o bbox $@
 
 # Filter geography down; join it with census data

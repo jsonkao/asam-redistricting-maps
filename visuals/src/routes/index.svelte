@@ -24,7 +24,6 @@
 				return new Set([...acc, ...fields]);
 			}, [])
 		];
-		console.log(data[0]);
 
 		return {
 			props: {
@@ -44,16 +43,19 @@
 	import { geoPath } from 'd3-geo';
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
+	import { pct } from '$lib/utils';
 
 	export let topoData, obj, neighbors, data, dynamicVars, staticVars;
 
 	const path = geoPath();
+	const bgMesh = path(mesh(topoData, obj, (a, b) => a !== b));
 
+	const getDistrict = (i) => data[i].properties.DISTRICT;
 	function neighbor(i) {
-		const D = (k) => data[k].properties.DISTRICT; // district accessor
-		const districts = [...new Set(neighbors[i].map(D).filter((d) => d !== D(i)))];
-		if (districts.length === 1) {
-			obj.geometries[i].properties.DISTRICT = districts[0];
+		const selfD = getDistrict(i);
+		const districts = new Set(neighbors[i].map(getDistrict).filter((d) => d !== selfD));
+		if (districts.size === 1) {
+			obj.geometries[i].properties.DISTRICT = districts.values().next().value;
 			obj = obj;
 		}
 	}
@@ -67,7 +69,7 @@
 	const levels = ['66', '99', 'dd'];
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
-	let period = 'past';
+	let period = 'present';
 	let variable = 'hhlang';
 	$: metric = staticVars.includes(variable)
 		? variable
@@ -75,12 +77,11 @@
 
 	const breaksCache = {};
 	const isNum = (x) => !isNaN(x) && x !== null;
-	const vGen = (g) => (d) => d[`${metric}_${g}`] / d[`${metric}_total`];
 	$: getValue = {
 		income: (d) => d[metric],
-		hhlang: vGen('asian'),
-		graduates: vGen('hs_grad'),
-		families: vGen('benefits')
+		hhlang: (d) => d[`${metric}_asian`] / d[`${metric}_total`],
+		graduates: (d) => (d[`${metric}_hs_grad`] + d[`${metric}_ba_above`]) / d[`${metric}_total`],
+		families: (d) => d[`${metric}_benefits`] / d[`${metric}_total`]
 	}[metric];
 	$: breaks =
 		breaksCache[metric] ||
@@ -91,9 +92,10 @@
 		const total = d[`${metric}_total`];
 
 		if (staticVars.includes(metric)) {
-			if (!isNum(getValue(d))) return '#ccc';
-			for (let i = 1; i < breaks.length; i++)
+			if (!isNum(getValue(d))) return '#ddd';
+			for (let i = 1; i < breaks.length; i++) {
 				if (getValue(d) < breaks[i]) return schemeBlues[breaks.length][i];
+			}
 			return schemeBlues[breaks.length][breaks.length - 1];
 		} else {
 			if (total <= 10) return '#fff';
@@ -111,11 +113,12 @@
 
 	let yOffset = 0;
 
+	const districtTarget = 'G';
 	$: sums = [...groups, 'total'].reduce((acc, g) => {
-		if (`${metric}_${g}` in data[0].properties) {
+		if (`pop20_${g}` in data[0].properties) {
 			acc[g] = 0;
 			obj.geometries.forEach(({ properties: d }) => {
-				if (d.DISTRICT === 'G') acc[g] += d[`${metric}_${g}`];
+				if (d.DISTRICT === districtTarget) acc[g] += d[`pop20_${g}`];
 			});
 		}
 		return acc;
@@ -126,12 +129,12 @@
 
 <div class="container">
 	<div class="controls">
-		{#each [...dynamicVars, ...staticVars] as v, i}
+		{#each [...staticVars, ...dynamicVars] as v, i}
+			{#if i === staticVars.length} <br /> {/if}
 			<label>
 				<input type="radio" bind:group={variable} name="variable" value={v} />
 				{v}
 			</label>
-			{#if i === 3} <br /> {/if}
 		{/each}
 		{#if dynamicVars.includes(variable)}
 			<br />
@@ -141,48 +144,58 @@
 					{p}
 				</label>
 			{/each}
-		{/if}
-	</div>
 
-	<div class="map-container">
-		<svg width="800" viewBox="0 {yOffset} 975 {1040 - yOffset}">
-			<g>
-				{#each data as f, i (f.properties.GEOID)}
-					<path
-						class="block-group"
-						d={path(f)}
-						fill={color(f, metric, period)}
-						on:click={() => neighbor(i)}
-					/>
-				{/each}
-			</g>
-			<g class="meshes">
-				<path class="mesh" d={path(mesh(topoData, obj, (a, b) => a !== b))} />
-				<path
-					style="stroke: #bbb; stroke-width: .6;"
-					d={path(mesh(topoData, obj, (a, b) => a === b))}
-				/>
-				<path
-					style="stroke: black;"
-					d={path(mesh(topoData, obj, (a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
-				/>
-			</g>
-		</svg>
-	</div>
-
-	<p style="margin: 0;">
-		asian pct in Senate G: {Math.round((sums['asian'] / sums.total) * 1e4) / 1e2}%
-	</p>
-
-	<div class="legend">
-		{#each groups as grp}
-			<div class="row">
-				{#each levels as lvl}
-					<div class="rectangle" style="background-color: {colors[grp] + lvl}" />
+			<div class="legend">
+				{#each groups as grp}
+					<div class="row">
+						{#each levels as lvl}
+							<div class="rectangle" style="background-color: {colors[grp] + lvl}" />
+						{/each}
+						<p class="row-label">{grp}</p>
+					</div>
 				{/each}
 			</div>
-		{/each}
+		{/if}
+
+		<div class="stats">
+			<p style="font-weight: 600">Senate District {districtTarget}</p>
+			<p>Percent Asian: {pct(sums['asian'] / sums.total)}%</p>
+			<p>Deviation: {sums.total - data[0].properties.IDEAL_VALU}</p>
+		</div>
 	</div>
+
+	<svg width="800" viewBox="0 {yOffset} 975 {1040 - yOffset}">
+		<g>
+			{#each data as f, i (f.properties.GEOID)}
+				<path
+					class="block-group"
+					d={path(f)}
+					fill={color(f, metric, period)}
+					on:click={() => neighbor(i)}
+				/>
+			{/each}
+		</g>
+		<g class="meshes">
+			<path class="mesh-bg" d={bgMesh} />
+			<path
+				class="mesh-district"
+				d={path(mesh(topoData, obj, (a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
+			/>
+			<path
+				class="mesh-target"
+				d={path(
+					mesh(
+						topoData,
+						obj,
+						(a, b) =>
+							(a.properties.DISTRICT === districtTarget ||
+								b.properties.DISTRICT === districtTarget) &&
+							a.properties.DISTRICT !== b.properties.DISTRICT
+					)
+				)}
+			/>
+		</g>
+	</svg>
 </div>
 
 <style>
@@ -195,6 +208,20 @@
 		position: sticky;
 		top: 5px;
 		left: 5px;
+		pointer-events: none;
+	}
+
+	.controls > * {
+		pointer-events: all;
+	}
+
+	.stats {
+		/* box-shadow: 0px 2px 4px rgba(0,0,0,0.3);
+		background: #fff;
+		margin: 5px;
+		padding: 6px;
+		display: inline-block; */
+		pointer-events: none;
 	}
 
 	svg {
@@ -207,18 +234,34 @@
 		stroke-linejoin: round;
 	}
 
-	.mesh {
+	.mesh-bg {
 		stroke: #fff;
 		stroke-width: 0.2;
+	}
+	.mesh-district {
+		stroke: black;
+		stroke-width: 0.5;
+	}
+	.mesh-target {
+		stroke: black;
+		stroke-width: 1.5;
 	}
 
 	.block-group {
 		transition-duration: 0.2s;
 	}
 
+	.legend {
+		pointer-events: none;
+	}
+
 	.row {
-		margin-bottom: 8px;
 		display: flex;
+		align-items: center;
+	}
+
+	.row-label {
+		margin-left: 5px;
 	}
 
 	.rectangle {
