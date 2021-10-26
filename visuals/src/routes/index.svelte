@@ -98,6 +98,7 @@
 			const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];
 			const p = (g) => d[`${metric}_${g}`];
 			if (p(periods[0]) === null) return colors.missing;
+
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
 			return schemeBlues[5][periods.indexOf(pluralities[0]) + 1];
 		} else if (staticVars.includes(metric)) {
@@ -114,7 +115,7 @@
 				return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
 			}
 
-			const pluralities = groups.sort((a, b) => p(b) - p(a));
+			const pluralities = [...groups].sort((a, b) => p(b) - p(a));
 			const distance = p(pluralities[0]) - p(pluralities[1]);
 			return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 		}
@@ -153,7 +154,10 @@
 
 <div class="container">
 	<div class="controls">
-		<select bind:value={variable}>
+		<select
+			bind:value={variable}
+			style="width: {staticVars.includes(variable) ? 'auto' : 'var(--control-width)'}"
+		>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
 					<option value={v}>{variablesLong[v] || v}</option>
@@ -263,7 +267,6 @@
 		font-size: 16px;
 		padding: 3px;
 		margin-bottom: 5px;
-		width: var(--control-width);
 	}
 
 	.controls {
