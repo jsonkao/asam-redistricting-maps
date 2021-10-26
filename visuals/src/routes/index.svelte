@@ -46,7 +46,6 @@
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
-	import { onMount, onDestroy } from 'svelte';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
 	import { pct, capitalize, money, isNum, id, district, xor } from '$lib/utils';
@@ -133,13 +132,6 @@
 	let showStats, showPlans, showSenatePlans, showComms, drawing, dragging;
 	let draggedBgs = [];
 	let drawings = [];
-	// onMount(() => {
-	// 	if (typeof localStorage !== 'undefined')
-	// 		drawings = (JSON.parse(localStorage.getItem('data')) || []).map(({ stats, ...r }) => ({
-	// 			r,
-	// 			stats: stats(r.indices)
-	// 		}));
-	// });
 	$: {
 		if (!dragging && draggedBgs.length > 0) {
 			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
@@ -148,28 +140,28 @@
 					mesh((a, b) => xor(bgs.has(id(a)), bgs.has(id(b)))).coordinates.flat()
 				);
 				const indices = data
-						.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
-						.filter((d) => d[0])
-						.map((d) => d[1]),
-					drawings = [
-						...drawings,
-						{
-							outline: path({
-								type: 'LineString',
-								coordinates: hull
-							}),
-							indices,
-							stats: stats(indices)
-						}
-					];
+					.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
+					.filter((d) => d[0])
+					.map((d) => d[1]);
+				drawings = [
+					...drawings,
+					{
+						outline: path({
+							type: 'LineString',
+							coordinates: hull
+						}),
+						indices,
+						stats: getStats(indices)
+					}
+				];
 			}
 			draggedBgs = [];
 		}
 	}
 
-	function stats(indices) {
-		const data = indices.map((i) => data[i].properties);
-		const sum = (m, w) => data.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] : 1), 0);
+	function getStats(indices) {
+		const data1 = indices.map((i) => data[i].properties);
+		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
 		const output = {
@@ -180,11 +172,9 @@
 		return output;
 	}
 
-	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
+	$: console.log(drawings);
 
-	/* onDestroy(() => {
-		if (typeof localStorage !== 'undefined') localStorage.setItem('data', JSON.stringify(drawings));
-	}); */
+	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
