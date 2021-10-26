@@ -36,6 +36,8 @@ visuals/static/%: mapping/%
 mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 	mapshaper $< \
 	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,IDEAL_VALU largest-overlap \
+	-join mapping/ntas.geojson fields=ntaname largest-overlap \
+	-rename-fields NEIGHBORHOOD=ntaname \
 	-o bbox $@
 
 # Filter geography down; join it with census data

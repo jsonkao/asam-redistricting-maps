@@ -50,6 +50,7 @@
 
 	const path = geoPath();
 	const bgMesh = path(mesh(topoData, obj, (a, b) => a !== b));
+	const ntaMesh = path(mesh(topoData, obj, (a, b) => a.properties.NEIGHBORHOOD !== b.properties.NEIGHBORHOOD));
 
 	const getDistrict = (i) => data[i].properties.DISTRICT;
 	function neighbor(i) {
@@ -72,7 +73,7 @@
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
 	let period = 'present';
-	let variable = 'pop';
+	let variable = 'hhlang';
 	$: metric = staticVars.includes(variable)
 		? variable
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
@@ -150,6 +151,24 @@
 	let showStats = false;
 	let showPlans = false;
 	let showSenatePlans = false;
+
+	$: aggregates = aggregate(metric);
+	$: console.log(...aggregates);
+	function aggregate(metric) {
+		return [
+			{ field: 'DISTRICT', name: 'G' },
+			{ field: 'NEIGHBORHOOD', name: 'Sheepshead Bay-Gerritsen Beach-Manhattan Beach' }
+		].map(({ field, name }) => {
+			const values = data.filter((f) => f.properties[field] === name);
+			return {
+				field,
+				name,
+				value:
+					values.reduce((a, d) => a + (d.properties[`${metric}_asian`] || 0), 0) /
+					values.reduce((a, d) => a + (d.properties[`${metric}_total`] || 0), 0)
+			};
+		});
+	}
 </script>
 
 <div class="container">
@@ -171,7 +190,6 @@
 		</select>
 
 		{#if dynamicVars.includes(variable)}
-			<br />
 			{#each ['past', 'present'] as p}
 				<label>
 					<input type="radio" bind:group={period} name="period" value={p} />
@@ -191,6 +209,8 @@
 				<p class="col-head">Majority</p>
 				<p class="col-head" />
 			</div>
+		{:else}
+			hi
 		{/if}
 
 		<div class="stats">
@@ -210,7 +230,7 @@
 				<div in:slide out:slide>
 					<label>
 						<input type="checkbox" bind:checked={showSenatePlans} />
-						State Senate "Letters" Plan
+						State Senate, "Letters"
 					</label>
 				</div>
 			{/if}
@@ -224,12 +244,13 @@
 					class="block-group"
 					d={path(f)}
 					fill={color(f, metric, period)}
-					on:click={() => neighbor(i)}
+					on:click={() => showSenatePlans && neighbor(i)}
 				/>
 			{/each}
 		</g>
 		<g class="meshes">
 			<path class="mesh-bg" d={bgMesh} />
+			<!-- <path class="mesh-bg" style="stroke: red; stroke-width: 1" d={ntaMesh} /> -->
 			{#if showSenatePlans}
 				<g in:fade out:fade>
 					<path
