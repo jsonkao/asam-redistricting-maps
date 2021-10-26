@@ -1,5 +1,5 @@
 <script context="module">
-	import { feature, neighbors } from 'topojson-client';
+	import { feature, neighbors as topoNeighbors } from 'topojson-client';
 
 	/**
 	 * A function that computes all constant data
@@ -30,7 +30,7 @@
 				topoData,
 				obj,
 				data,
-				neighbors: neighbors(obj.geometries),
+				neighbors: topoNeighbors(obj.geometries),
 				dynamicVars,
 				staticVars
 			}
@@ -44,7 +44,10 @@
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
+	import * as concaveman from 'concaveman';
+	import pointInPolygon from 'point-in-polygon';
 	import { pct, capitalize, money } from '$lib/utils';
+	import { polygonCentroid } from 'd3-polygon';
 
 	export let topoData, obj, neighbors, data, dynamicVars, staticVars;
 	const tractVars = ['asiaentry', 'workers'];
@@ -150,7 +153,6 @@
 	$: delta = sums.total - data[0].properties.IDEAL_VALU;
 
 	$: console.log(sums);
-	$: console.log(breaks);
 
 	const variablesLong = {
 		hhlang: 'Proportion of households that speak an Asian language and are LEP',
@@ -187,6 +189,71 @@
 
 	const hideInfo = () => {};
 	const showInfo = (i) => console.log(data[i].properties);
+
+	let dragging = false;
+	let draggedBgs = [];
+	let draggedMesh;
+	$: {
+		if (!dragging && draggedBgs.length > 0) {
+			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
+				const bgs = new Set(draggedBgs);
+				const hull = concaveman(
+					mesh(
+						topoData,
+						obj,
+						(a, b) =>
+							(bgs.has(a.properties.GEOID) && !bgs.has(b.properties.GEOID)) ||
+							(bgs.has(b.properties.GEOID) && !bgs.has(a.properties.GEOID))
+					).coordinates.flat()
+				);
+
+				let queue = [];
+				const g = (i) => obj.geometries[i].properties.GEOID;
+				for (const j of neighbors[draggedBgs._head]) {
+					if (
+						!bgs.has(g(j)) &&
+						pointInPolygon(polygonCentroid(data[j].geometry.coordinates[0]), hull)
+					) {
+						queue.push(j);
+						break;
+					}
+					for (const k of neighbors[j]) {
+						if (
+							!bgs.has(g(k)) &&
+							pointInPolygon(polygonCentroid(data[k].geometry.coordinates[0]), hull)
+						) {
+							queue.push(k);
+							break;
+						}
+					}
+					if (queue.length > 0) break;
+				}
+				console.log(' ==== q', queue);
+				while (queue.length > 0 && queue.length < 100) {
+					console.log('q', queue);
+					console.log('bgs', bgs);
+					const n = queue.pop();
+					bgs.add(g(n));
+					neighbors[n].forEach((j) => {
+						if (!bgs.has(j)) queue.push(j);
+					});
+				}
+
+				console.log(bgs);
+				draggedMesh = path({
+					type: 'LineString',
+					coordinates: hull
+				});
+			}
+			draggedBgs = [];
+		}
+	}
+	const contributeBg = (g, i) => {
+		if (draggedBgs.length === 0) {
+			draggedBgs._head = i;
+		}
+		draggedBgs.push(g);
+	};
 </script>
 
 <div class="container" on:click={hideInfo}>
@@ -277,7 +344,12 @@
 		</div>
 	</div>
 
-	<svg width="1000" viewBox="0 {yOffset} 975 {1040 - yOffset}">
+	<svg
+		width="1000"
+		viewBox="0 {yOffset} 975 {1040 - yOffset}"
+		on:mousedown={() => (dragging = true)}
+		on:mouseup={() => (dragging = false)}
+	>
 		<g>
 			{#each data as f, i (f.properties.GEOID)}
 				<path
@@ -286,6 +358,7 @@
 					fill={color(f, metric, period)}
 					on:click={() => showSenatePlans && neighbor(i)}
 					on:contextmenu|preventDefault={() => showInfo(i)}
+					on:mousemove|preventDefault={() => dragging && contributeBg(f.properties.GEOID, i)}
 				/>
 			{/each}
 		</g>
@@ -294,6 +367,9 @@
 				<path class="mesh-bg" d={tractMesh} />
 			{:else}
 				<path class="mesh-bg" d={bgMesh} />
+			{/if}
+			{#if draggedMesh}
+				<path class="mesh-target" d={draggedMesh} />
 			{/if}
 			<!-- <path class="mesh-bg" style="stroke: red; stroke-width: 1" d={ntaMesh} /> -->
 			{#if showSenatePlans}
@@ -348,6 +424,7 @@
 		font-size: 16px;
 		margin-bottom: 4px;
 		cursor: pointer;
+		width: 110px;
 	}
 
 	.stats p {
