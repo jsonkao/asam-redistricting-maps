@@ -1,4 +1,13 @@
 #
+# PLANS for web
+#
+
+web_plans: visuals/static/senate_letters.geojson
+
+visuals/static/%.geojson: Makefile plans/%/*.shp
+	mapshaper "$(filter-out $<,$^)" -o $@
+
+#
 # PLANS
 #
 
