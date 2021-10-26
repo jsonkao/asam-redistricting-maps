@@ -32,39 +32,33 @@
 				data,
 				neighbors: topoNeighbors(obj.geometries),
 				dynamicVars,
-				staticVars
+				staticVars,
+				tractVars: ['asiaentry', 'workers'],
+				pluralityVars: ['asiaentry'] // Aside from race
 			}
 		};
 	}
 </script>
 
 <script>
-	import { mesh } from 'topojson-client';
+	import { mesh as topoMesh } from 'topojson-client';
 	import { geoPath } from 'd3-geo';
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
+	import { onMount, onDestroy } from 'svelte';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
-	import { pct, capitalize, money } from '$lib/utils';
+	import { pct, capitalize, money, isNum, id, district, xor } from '$lib/utils';
+	import { colors, levels, groups, periods, variablesLong } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 
-	export let topoData, obj, neighbors, data, dynamicVars, staticVars;
-	const tractVars = ['asiaentry', 'workers'];
-	const pluralityVars = ['asiaentry']; // Aside from race
+	export let topoData, obj, neighbors, data, dynamicVars, staticVars, tractVars, pluralityVars;
 
 	const path = geoPath();
-	const bgMesh = path(mesh(topoData, obj, (a, b) => a.properties.GEOID !== b.properties.GEOID));
-	const tractMesh = path(
-		mesh(
-			topoData,
-			obj,
-			(a, b) => a.properties.GEOID.substring(0, 11) !== b.properties.GEOID.substring(0, 11)
-		)
-	);
-	const ntaMesh = path(
-		mesh(topoData, obj, (a, b) => a.properties.NEIGHBORHOOD !== b.properties.NEIGHBORHOOD)
-	);
+	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
+	const bgMesh = path(mesh((a, b) => id(a) !== id(b)));
+	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
 	const getDistrict = (i) => data[i].properties.DISTRICT;
 	function neighbor(i) {
@@ -76,16 +70,6 @@
 		}
 	}
 
-	const colors = {
-		black: '#9fd400',
-		hispanic: '#ffaa00',
-		asian: '#ff0000',
-		white: '#73B2FF'
-	}; // from Racial Dot Map, see https://github.com/unorthodox123/RacialDotMap/blob/master/dotmap.pde#L168
-	const levels = ['44', '99', 'ee'];
-	const groups = ['asian', 'black', 'hispanic', 'white'];
-	const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];
-
 	let period = 'past';
 	let variable = 'pop';
 	$: metric = staticVars.includes(variable)
@@ -93,7 +77,6 @@
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	const breaksCache = {};
-	const isNum = (x) => !isNaN(x) && x !== null;
 	$: getValue = {
 		income: (d) => d[metric],
 		hhlang: (d) => d[`${metric}_asian`] / d[`${metric}_total`],
@@ -104,8 +87,7 @@
 	$: breaks =
 		breaksCache[metric] ||
 		!staticVars.includes(metric) ||
-		metric === 'asiaentry' ||
-		// tractVars.includes(metric) || // Don't compute breaks for dynamic and tract variables
+		metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
 		(breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
 	function color({ properties: d }) {
@@ -114,10 +96,8 @@
 		if (pluralityVars.includes(metric)) {
 			const p = (g) => d[`${metric}_${g}`];
 			if (p(periods[0]) === null) return '#ddd';
-
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
 			return schemeBlues[periods.length][periods.indexOf(pluralities[0])];
-			return Object.values(colors)[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
 			if (!isNum(getValue(d))) return '#ddd';
 			for (let i = 1; i < breaks.length; i++) {
@@ -138,8 +118,6 @@
 		}
 	}
 
-	let yOffset = 0;
-
 	const districtTarget = 'G';
 	$: sums = [...groups, 'total'].reduce((acc, g) => {
 		if (`pop20_${g}` in data[0].properties) {
@@ -152,92 +130,64 @@
 	}, {});
 	$: delta = sums.total - data[0].properties.IDEAL_VALU;
 
-	$: console.log(sums);
-
-	const variablesLong = {
-		hhlang: 'Proportion of households that speak an Asian language and are LEP',
-		income: 'Median household income',
-		graduates: 'Proportion of people who graduated >= high school',
-		families: "Proportion of families who receive gov't benefits",
-		asiaentry: 'Dominant entry period for Asian families',
-		workers: 'Proportion of workers who take public transportation',
-		cvap: 'Citizen voting age population by race',
-		pop: 'Population by race'
-	};
-
-	let showStats = false;
-	let showPlans = false;
-	let showSenatePlans = false;
-
-	$: aggregates = aggregate(metric);
-	// $: console.log(...aggregates);
-	function aggregate(metric) {
-		return [
-			{ field: 'DISTRICT', name: 'G' },
-			{ field: 'NEIGHBORHOOD', name: 'Sheepshead Bay-Gerritsen Beach-Manhattan Beach' }
-		].map(({ field, name }) => {
-			const values = data.filter((f) => f.properties[field] === name);
-			return {
-				field,
-				name,
-				value:
-					values.reduce((a, d) => a + (d.properties[`${metric}_asian`] || 0), 0) /
-					values.reduce((a, d) => a + (d.properties[`${metric}_total`] || 0), 0)
-			};
-		});
-	}
-
-	$: {
-		let o = 0;
-		inside.forEach(i => {
-			o += data[i].properties.pop20_total;
-		})
-		console.log(o);
-	}
-
-	const hideInfo = () => {};
-	const showInfo = (i) => console.log(data[i].properties);
-
-	let dragging = false;
+	let showStats, showPlans, showSenatePlans, showComms, drawing, dragging;
 	let draggedBgs = [];
-	let draggedMesh;
-	let inside = [];
+	let drawings = [];
+	// onMount(() => {
+	// 	if (typeof localStorage !== 'undefined')
+	// 		drawings = (JSON.parse(localStorage.getItem('data')) || []).map(({ stats, ...r }) => ({
+	// 			r,
+	// 			stats: stats(r.indices)
+	// 		}));
+	// });
 	$: {
 		if (!dragging && draggedBgs.length > 0) {
 			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
 				const bgs = new Set(draggedBgs);
 				const hull = concaveman(
-					mesh(
-						topoData,
-						obj,
-						(a, b) =>
-							(bgs.has(a.properties.GEOID) && !bgs.has(b.properties.GEOID)) ||
-							(bgs.has(b.properties.GEOID) && !bgs.has(a.properties.GEOID))
-					).coordinates.flat()
+					mesh((a, b) => xor(bgs.has(id(a)), bgs.has(id(b)))).coordinates.flat()
 				);
-
-				inside = data
-					.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
-					.filter((x) => x[0])
-					.map((x) => x[1]);
-
-				draggedMesh = path({
-					type: 'LineString',
-					coordinates: hull
-				});
+				const indices = data
+						.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
+						.filter((d) => d[0])
+						.map((d) => d[1]),
+					drawings = [
+						...drawings,
+						{
+							outline: path({
+								type: 'LineString',
+								coordinates: hull
+							}),
+							indices,
+							stats: stats(indices)
+						}
+					];
 			}
 			draggedBgs = [];
 		}
 	}
-	const contributeBg = (g, i) => {
-		if (draggedBgs.length === 0) {
-			draggedBgs._head = i;
-		}
-		draggedBgs.push(g);
-	};
+
+	function stats(indices) {
+		const data = indices.map((i) => data[i].properties);
+		const sum = (m, w) => data.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] : 1), 0);
+		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
+		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
+		const output = {
+			income: wMean('income'),
+			hhlang: prop('hhlang', 'asian')
+		};
+		groups.forEach((g) => (output['prop_' + g] = prop('pop20', g)));
+		return output;
+	}
+
+	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
+
+	/* onDestroy(() => {
+		if (typeof localStorage !== 'undefined') localStorage.setItem('data', JSON.stringify(drawings));
+	}); */
 </script>
 
-<div class="container" on:click={hideInfo}>
+<div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
 	<div class="controls">
 		<select
 			bind:value={variable}
@@ -323,53 +273,68 @@
 				</div>
 			{/if}
 		</div>
+
+		<div class="stats">
+			<h3>
+				<button on:click={() => (showComms = !showComms)}>Communities ↓</button>
+				<button on:click={() => (drawing = true)}>+</button>
+			</h3>
+			{#if showComms}
+				<div in:slide out:slide>
+					{#each drawings as { stats }, i}
+						<div>
+							<p><i>COI {i + 1}</i> <button on:click={() => delDrawing(i)}>🗑</button></p>
+							{#each ['asian'] as grp}
+								<p>Pct. {capitalize(grp)}: {pct(stats[`prop_${grp}`])}</p>
+							{/each}
+							<p>Income: {money(stats.income)}</p>
+							<p>Asian and LEP: {pct(stats['hhlang'])}</p>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 
 	<svg
 		width="1000"
-		viewBox="0 {yOffset} 975 {1040 - yOffset}"
-		on:mousedown={() => (dragging = true)}
-		on:mouseup={() => (dragging = false)}
+		viewBox="0 0 975 1040"
+		on:mousedown={() => (dragging = drawing)}
+		on:mouseup={() => (dragging = drawing = false)}
 	>
 		<g>
-			{#each data as f, i (f.properties.GEOID)}
+			{#each data as f, i (id(f))}
 				<path
 					class="block-group"
+					class:head={draggedBgs[0] === id(f)}
 					d={path(f)}
 					fill={color(f, metric, period)}
 					on:click={() => showSenatePlans && neighbor(i)}
-					on:contextmenu|preventDefault={() => showInfo(i)}
-					on:mousemove|preventDefault={() => dragging && contributeBg(f.properties.GEOID, i)}
+					on:contextmenu|preventDefault={() => console.log(f.properties)}
+					on:mousemove|preventDefault={() =>
+						drawing &&
+						dragging &&
+						(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)))}
 				/>
 			{/each}
 		</g>
 		<g class="meshes">
-			{#if tractVars.includes(metric)}
-				<path class="mesh-bg" d={tractMesh} />
-			{:else}
-				<path class="mesh-bg" d={bgMesh} />
-			{/if}
-			{#if draggedMesh}
-				<path class="mesh-target" d={draggedMesh} />
-			{/if}
-			<!-- <path class="mesh-bg" style="stroke: red; stroke-width: 1" d={ntaMesh} /> -->
+			<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
+
+			{#each drawings as { outline }}
+				<path class="mesh-target" d={outline} />
+			{/each}
+
 			{#if showSenatePlans}
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
-						d={path(mesh(topoData, obj, (a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
+						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
 					/>
 					<path
 						class="mesh-target"
 						d={path(
-							mesh(
-								topoData,
-								obj,
-								(a, b) =>
-									(a.properties.DISTRICT === districtTarget ||
-										b.properties.DISTRICT === districtTarget) &&
-									a.properties.DISTRICT !== b.properties.DISTRICT
-							)
+							mesh((a, b) => xor(district(a) === districtTarget, district(b) === districtTarget))
 						)}
 					/>
 				</g>
@@ -405,7 +370,7 @@
 		font-size: 16px;
 		margin-bottom: 4px;
 		cursor: pointer;
-		width: 110px;
+		width: 124px;
 	}
 
 	.stats p {
@@ -415,6 +380,12 @@
 	svg {
 		margin: 20px 0 0 var(--control-width);
 		display: block;
+	}
+
+	svg path.head {
+		stroke: black;
+		stroke-width: 2;
+		stroke-dasharray: 4;
 	}
 
 	.meshes path {
