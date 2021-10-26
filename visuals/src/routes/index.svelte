@@ -187,13 +187,21 @@
 		});
 	}
 
+	$: {
+		let o = 0;
+		inside.forEach(i => {
+			o += data[i].properties.pop20_total;
+		})
+		console.log(o);
+	}
+
 	const hideInfo = () => {};
 	const showInfo = (i) => console.log(data[i].properties);
 
 	let dragging = false;
 	let draggedBgs = [];
 	let draggedMesh;
-	let inside;
+	let inside = [];
 	$: {
 		if (!dragging && draggedBgs.length > 0) {
 			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
@@ -209,8 +217,10 @@
 				);
 
 				inside = data
-					.filter((f) => pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull))
-					.map((f) => f.properties.GEOID);
+					.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
+					.filter((x) => x[0])
+					.map((x) => x[1]);
+
 				draggedMesh = path({
 					type: 'LineString',
 					coordinates: hull
