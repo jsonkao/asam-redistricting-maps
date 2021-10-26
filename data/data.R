@@ -82,6 +82,8 @@ cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 
 #' # ACS Data
 #' 
+#' > load_variables(2019, "acs5", cache = T) %>% View
+#' 
 #' - Language: Table C16002 (household-level language ability. Easier to start with than B16004, individual-level)
 #'   - Variables: total households and total limited english speaking households that speak Asian/PI languages
 #' - Income: median household income

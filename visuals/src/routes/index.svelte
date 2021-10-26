@@ -69,11 +69,11 @@
 		white: '#73B2FF',
 		missing: '#ddd'
 	}; // from Racial Dot Map, see https://github.com/unorthodox123/RacialDotMap/blob/master/dotmap.pde#L168
-	const levels = ['66', '99', 'dd'];
+	const levels = ['44', '99', 'ee'];
 	const groups = ['asian', 'black', 'hispanic', 'white'];
 
-	let period = 'present';
-	let variable = 'hhlang';
+	let period = 'past';
+	let variable = 'pop';
 	$: metric = staticVars.includes(variable)
 		? variable
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
@@ -291,11 +291,10 @@
 	}
 
 	.controls {
-		position: sticky;
+		position: fixed;
 		max-width: var(--control-width);
 		top: 15px;
 		padding-left: 15px;
-		height: 400px;
 	}
 
 	.stats div {
@@ -340,9 +339,9 @@
 	}
 
 	.legend {
-		margin: 20px 0;
+		margin: 23px 0;
 		display: grid;
-		grid-template-columns: repeat(3, 50px) 1fr;
+		grid-template-columns: repeat(3, 51px) 1fr;
 		row-gap: 9px;
 		grid-template-rows: repeat(5, 14px);
 	}
@@ -354,7 +353,7 @@
 
 	.col-head {
 		text-transform: uppercase;
-		font-size: 10.5px;
+		font-size: 11px;
 		line-height: 1.1;
 		margin-top: -3px;
 	}
