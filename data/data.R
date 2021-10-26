@@ -88,9 +88,9 @@ cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 #' - Education: B28006 = Educational Attainment By Presence Of A Computer And Types Of Internet Subscription In Household
 #' - Government benefits: B19123 = Family Size By Cash Public Assistance Income Or Households Receiving Food Stamps/Snap Benefits In The Past 12 Months
 
-get_acs_brooklyn <- function(vars, name = "") {
+get_acs_brooklyn <- function(vars, name = "", geo = "block group") {
   data <- get_acs(
-    geography = "block group",
+    geography = geo,
     state = "New York",
     county = "Kings",
     variables = vars,
@@ -118,9 +118,26 @@ education <- get_acs_brooklyn(c(total = "B28006_001", no_hs = "B28006_002", hs_g
 
 benefits <- get_acs_brooklyn(c(total = "B19123_001", benefits = "B19123_002"), "families")
 
+#' # ACS Data I'm fine with at the tract level
+
+# TODO: B05007: Place Of Birth By Year Of Entry By Citizenship Status For The Foreign-Born Population
+
+entry <- get_acs_brooklyn(
+  c(total = "B05007_027", `2010_later` = "B05007_028", `2000_2009` = "B05007_031", `1990_1999` = "B05007_034", `1990_earlier` = "B05007_037"),
+  "asiaentry",
+  "tract"
+)
+
 #' # Consolidate static variables
 
-static_consolidated <- hhlang %>% inner_join(income) %>% inner_join(education) %>% inner_join(benefits)
+static_consolidated <-
+  hhlang %>%
+  inner_join(income) %>%
+  inner_join(education) %>%
+  inner_join(benefits) %>% 
+  mutate(tract = substr(GEOID, 1, 11)) %>% 
+  right_join(entry %>% rename(tract = GEOID), by = "tract") %>% 
+  select(-tract)
 
 #' # Consolidate dynamic variables
 
