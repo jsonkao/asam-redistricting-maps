@@ -44,13 +44,24 @@
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
-	import { pct, capitalize } from '$lib/utils';
+	import { pct, capitalize, money } from '$lib/utils';
 
 	export let topoData, obj, neighbors, data, dynamicVars, staticVars;
+	const tractVars = ['asiaentry', 'workers'];
+	const pluralityVars = ['asiaentry']; // Aside from race
 
 	const path = geoPath();
-	const bgMesh = path(mesh(topoData, obj, (a, b) => a !== b));
-	const ntaMesh = path(mesh(topoData, obj, (a, b) => a.properties.NEIGHBORHOOD !== b.properties.NEIGHBORHOOD));
+	const bgMesh = path(mesh(topoData, obj, (a, b) => a.properties.GEOID !== b.properties.GEOID));
+	const tractMesh = path(
+		mesh(
+			topoData,
+			obj,
+			(a, b) => a.properties.GEOID.substring(0, 11) !== b.properties.GEOID.substring(0, 11)
+		)
+	);
+	const ntaMesh = path(
+		mesh(topoData, obj, (a, b) => a.properties.NEIGHBORHOOD !== b.properties.NEIGHBORHOOD)
+	);
 
 	const getDistrict = (i) => data[i].properties.DISTRICT;
 	function neighbor(i) {
@@ -66,11 +77,11 @@
 		black: '#9fd400',
 		hispanic: '#ffaa00',
 		asian: '#ff0000',
-		white: '#73B2FF',
-		missing: '#ddd'
+		white: '#73B2FF'
 	}; // from Racial Dot Map, see https://github.com/unorthodox123/RacialDotMap/blob/master/dotmap.pde#L168
 	const levels = ['44', '99', 'ee'];
 	const groups = ['asian', 'black', 'hispanic', 'white'];
+	const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];
 
 	let period = 'past';
 	let variable = 'pop';
@@ -84,26 +95,28 @@
 		income: (d) => d[metric],
 		hhlang: (d) => d[`${metric}_asian`] / d[`${metric}_total`],
 		graduates: (d) => (d[`${metric}_hs_grad`] + d[`${metric}_ba_above`]) / d[`${metric}_total`],
-		families: (d) => d[`${metric}_benefits`] / d[`${metric}_total`]
+		families: (d) => d[`${metric}_benefits`] / d[`${metric}_total`],
+		workers: (d) => d[`${metric}_publictransport`] / d[`${metric}_total`]
 	}[metric];
 	$: breaks =
 		breaksCache[metric] ||
 		!staticVars.includes(metric) ||
-		metric === 'asiaentry' || // Don't compute breaks for dynamic variables
+		metric === 'asiaentry' ||
+		// tractVars.includes(metric) || // Don't compute breaks for dynamic and tract variables
 		(breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
 	function color({ properties: d }) {
 		const total = d[`${metric}_total`];
 
-		if (metric === 'asiaentry') {
-			const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];
+		if (pluralityVars.includes(metric)) {
+			const periodColors = Object.values(colors);
 			const p = (g) => d[`${metric}_${g}`];
-			if (p(periods[0]) === null) return colors.missing;
+			if (p(periods[0]) === null) return '#ddd';
 
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
-			return schemeBlues[5][periods.indexOf(pluralities[0]) + 1];
+			return periodColors[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
-			if (!isNum(getValue(d))) return colors.missing;
+			if (!isNum(getValue(d))) return '#ddd';
 			for (let i = 1; i < breaks.length; i++) {
 				if (getValue(d) < breaks[i]) return schemeBlues[breaks.length][i];
 			}
@@ -137,6 +150,7 @@
 	$: delta = sums.total - data[0].properties.IDEAL_VALU;
 
 	$: console.log(sums);
+	$: console.log(breaks);
 
 	const variablesLong = {
 		hhlang: 'Proportion of households that speak an Asian language and are LEP',
@@ -144,6 +158,7 @@
 		graduates: 'Proportion of people who graduated >= high school',
 		families: "Proportion of families who receive gov't benefits",
 		asiaentry: 'Dominant entry period for Asian families',
+		workers: 'Proportion of workers who take public transportation',
 		cvap: 'Citizen voting age population by race',
 		pop: 'Population by race'
 	};
@@ -153,7 +168,7 @@
 	let showSenatePlans = false;
 
 	$: aggregates = aggregate(metric);
-	$: console.log(...aggregates);
+	// $: console.log(...aggregates);
 	function aggregate(metric) {
 		return [
 			{ field: 'DISTRICT', name: 'G' },
@@ -169,9 +184,12 @@
 			};
 		});
 	}
+
+	const hideInfo = () => {};
+	const showInfo = (i) => console.log(data[i].properties);
 </script>
 
-<div class="container">
+<div class="container" on:click={hideInfo}>
 	<div class="controls">
 		<select
 			bind:value={variable}
@@ -209,8 +227,30 @@
 				<p class="col-head">Majority</p>
 				<p class="col-head" />
 			</div>
+		{:else if pluralityVars.includes(metric)}
+			<div class="color-legend plurality-legend">
+				{#each periods as p, i}
+					<div style="background-color: {Object.values(colors)[i]}" />
+				{/each}
+				{#each periods as p}
+					<p>{p.replace('_', '-')}</p>
+				{/each}
+			</div>
 		{:else}
-			hi
+			<div class="color-legend">
+				{#each breaks as b, i}
+					<div style="background-color: {schemeBlues[breaks.length][i]}" />
+				{/each}
+				{#each breaks as b}
+					<p>
+						{breaks[breaks.length - 1] < 1
+							? pct(b, 0)
+							: breaks[breaks.length - 1] > 1000
+							? money(b)
+							: b}
+					</p>
+				{/each}
+			</div>
 		{/if}
 
 		<div class="stats">
@@ -218,7 +258,7 @@
 			{#if showStats}
 				<div in:slide out:slide>
 					<p style="text-decoration: underline">Senate District {districtTarget}</p>
-					<p>{pct(sums['asian'] / sums.total)}% Asian</p>
+					<p>{pct(sums['asian'] / sums.total)} Asian</p>
 					<p>{Math.abs(delta).toLocaleString()} people {delta >= 0 ? 'above' : 'below'}</p>
 				</div>
 			{/if}
@@ -245,11 +285,16 @@
 					d={path(f)}
 					fill={color(f, metric, period)}
 					on:click={() => showSenatePlans && neighbor(i)}
+					on:contextmenu|preventDefault={() => showInfo(i)}
 				/>
 			{/each}
 		</g>
 		<g class="meshes">
-			<path class="mesh-bg" d={bgMesh} />
+			{#if tractVars.includes(metric)}
+				<path class="mesh-bg" d={tractMesh} />
+			{:else}
+				<path class="mesh-bg" d={bgMesh} />
+			{/if}
 			<!-- <path class="mesh-bg" style="stroke: red; stroke-width: 1" d={ntaMesh} /> -->
 			{#if showSenatePlans}
 				<g in:fade out:fade>
@@ -293,7 +338,7 @@
 	.controls {
 		position: fixed;
 		max-width: var(--control-width);
-		top: 15px;
+		top: 22px;
 		padding-left: 15px;
 	}
 
@@ -356,5 +401,30 @@
 		font-size: 11px;
 		line-height: 1.1;
 		margin-top: -3px;
+	}
+
+	.color-legend {
+		margin: 23px 0;
+		display: grid;
+		grid-template-rows: 12px 1fr;
+		row-gap: 5px;
+		grid-template-columns: repeat(6, 40px);
+	}
+
+	.color-legend p {
+		font-size: 13px;
+		text-align: center;
+		line-height: 1;
+		position: relative;
+		right: 13px;
+	}
+
+	.plurality-legend {
+		grid-template-columns: repeat(4, 40px);
+	}
+
+	.plurality-legend p {
+		right: 0;
+		word-break: break-all;
 	}
 </style>

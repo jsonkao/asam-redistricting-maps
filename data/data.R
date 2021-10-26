@@ -129,6 +129,7 @@ entry <- get_acs_brooklyn(
   "asiaentry",
   "tract"
 )
+workers <- get_acs_brooklyn(c(total = "B08006_001", publictransport = "B08006_008", drove = "B08006_002"), "workers", "tract") 
 
 #' # Consolidate static variables
 
@@ -139,6 +140,7 @@ static_consolidated <-
   inner_join(benefits) %>% 
   mutate(tract = substr(GEOID, 1, 11)) %>% 
   right_join(entry %>% rename(tract = GEOID), by = "tract") %>% 
+  right_join(workers %>% rename(tract = GEOID), by = "tract") %>% 
   select(-tract)
 
 #' # Consolidate dynamic variables
