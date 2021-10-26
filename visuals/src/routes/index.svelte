@@ -193,6 +193,7 @@
 	let dragging = false;
 	let draggedBgs = [];
 	let draggedMesh;
+	let inside;
 	$: {
 		if (!dragging && draggedBgs.length > 0) {
 			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
@@ -207,39 +208,9 @@
 					).coordinates.flat()
 				);
 
-				let queue = [];
-				const g = (i) => obj.geometries[i].properties.GEOID;
-				for (const j of neighbors[draggedBgs._head]) {
-					if (
-						!bgs.has(g(j)) &&
-						pointInPolygon(polygonCentroid(data[j].geometry.coordinates[0]), hull)
-					) {
-						queue.push(j);
-						break;
-					}
-					for (const k of neighbors[j]) {
-						if (
-							!bgs.has(g(k)) &&
-							pointInPolygon(polygonCentroid(data[k].geometry.coordinates[0]), hull)
-						) {
-							queue.push(k);
-							break;
-						}
-					}
-					if (queue.length > 0) break;
-				}
-				console.log(' ==== q', queue);
-				while (queue.length > 0 && queue.length < 100) {
-					console.log('q', queue);
-					console.log('bgs', bgs);
-					const n = queue.pop();
-					bgs.add(g(n));
-					neighbors[n].forEach((j) => {
-						if (!bgs.has(j)) queue.push(j);
-					});
-				}
-
-				console.log(bgs);
+				inside = data
+					.filter((f) => pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull))
+					.map((f) => f.properties.GEOID);
 				draggedMesh = path({
 					type: 'LineString',
 					coordinates: hull
