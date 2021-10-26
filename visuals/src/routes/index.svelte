@@ -109,12 +109,12 @@
 		const total = d[`${metric}_total`];
 
 		if (pluralityVars.includes(metric)) {
-			const periodColors = Object.values(colors);
 			const p = (g) => d[`${metric}_${g}`];
 			if (p(periods[0]) === null) return '#ddd';
 
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
-			return periodColors[periods.indexOf(pluralities[0])];
+			return schemeBlues[periods.length][periods.indexOf(pluralities[0])];
+			return Object.values(colors)[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
 			if (!isNum(getValue(d))) return '#ddd';
 			for (let i = 1; i < breaks.length; i++) {
@@ -230,7 +230,7 @@
 		{:else if pluralityVars.includes(metric)}
 			<div class="color-legend plurality-legend">
 				{#each periods as p, i}
-					<div style="background-color: {Object.values(colors)[i]}" />
+					<div style="background-color: {schemeBlues[periods.length][i]}" />
 				{/each}
 				{#each periods as p}
 					<p>{p.replace('_', '-')}</p>
@@ -324,12 +324,10 @@
 <style>
 	.container {
 		margin: 0 auto;
-		font-family: Overpass;
 		--control-width: 270px;
 	}
 
 	select {
-		font-family: Overpass;
 		font-size: 16px;
 		padding: 3px;
 		margin-bottom: 5px;
@@ -386,7 +384,7 @@
 	.legend {
 		margin: 23px 0;
 		display: grid;
-		grid-template-columns: repeat(3, 51px) 1fr;
+		grid-template-columns: repeat(3, 53px) 1fr;
 		row-gap: 9px;
 		grid-template-rows: repeat(5, 14px);
 	}
