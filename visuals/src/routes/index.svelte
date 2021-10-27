@@ -65,7 +65,7 @@
 	import { slide, fade } from 'svelte/transition';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
-	import { pct, capitalize, money, isNum, id, district, xor, planTitle } from '$lib/utils';
+	import { pct, capitalize, money, isNum, id, district, xor, planTitle, planDesc } from '$lib/utils';
 	import { colors, levels, groups, periods, variablesLong, seqColors } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 	import { onMount } from 'svelte';
@@ -256,7 +256,7 @@
 
 	let plan = 'senate_letters';
 
-	let aggregates = [{ plan: 'senate_letters', district: 'R' }];
+	let aggregates = [{ plan: 'senate_letters', district: 'R' }, { plan: 'senate_letters', district: 'BH' }];
 
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
@@ -354,12 +354,12 @@
 						<select bind:value={plan}>
 							<optgroup label="Current districts">
 								{#each ['assembly', 'senate', 'congress'] as p}
-									<option value={p}>{planTitle(p)}</option>
+									<option value={p}>{planDesc(p)}</option>
 								{/each}
 							</optgroup>
 							<optgroup label="Proposed districts">
 								{#each ['assembly_letters', 'assembly_names', 'senate_letters', 'senate_names', 'congress_letters', 'congress_names'] as p}
-									<option value={p}>{planTitle(p)}</option>
+									<option value={p}>{planDesc(p)}</option>
 								{/each}
 							</optgroup>
 						</select>
@@ -367,7 +367,7 @@
 					{#each aggregates as a}
 						{#if a.plan === plan}
 							<div class="district-aggregate">
-								<p><i>{a.district}</i></p>
+								<p><i>{planTitle(a)}</i></p>
 								{#each groups as grp}
 									<p>Pct. {capitalize(grp)}: {pct(a.stats[`prop_${grp}`])}</p>
 								{/each}
