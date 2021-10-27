@@ -15,26 +15,28 @@
 		});
 
 		map.on('load', async () => {
-			const req = await fetch('/senate_letters.topojson');
+			const req = await fetch('/output.topojson');
 			const topoData = await req.json();
-			const data = feature(topoData, topoData.objects.senate_letters);
-			map.addSource('senate_letters', {
+			['assembly', 'assembly_letters', 'assembly_names', 'senate', 'senate_letters', 'senate_names'].slice(100).forEach(k => {
+
+			const data = feature(topoData, topoData.objects[k]);
+			map.addSource(k {
 				type: 'geojson',
 				data
 			});
 			map.addLayer({
-				id: 'senate_letters_fill',
+				id: k + '_fill',
 				type: 'fill',
-				source: 'senate_letters', // reference the data source
+				source: k, // reference the data source
 				paint: {
 					'fill-color': '#0080ff', // blue color fill
 					'fill-opacity': 0.1
 				}
 			});
 			map.addLayer({
-				id: 'senate_letters_outline',
+				id: k + '_outline',
 				type: 'line',
-				source: 'senate_letters',
+				source: k,
 				layout: {},
 				paint: {
 					'line-color': '#000',
@@ -61,6 +63,11 @@
 		}
 	}
 </script>
+
+<svelte:head>
+	<link href='https://api.mapbox.com/mapbox-gl-js/v2.5.1/mapbox-gl.css' rel='stylesheet' />
+	<script src='https://api.mapbox.com/mapbox-gl-js/v2.5.1/mapbox-gl.js'></script>
+</svelte:head>
 
 <div id="map" />
 

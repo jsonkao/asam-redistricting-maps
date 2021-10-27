@@ -5,7 +5,7 @@ FIPSES = ["36047", "36061", "36081"]
 
 def compress_topojson():
     topo = json.load(sys.stdin)
-    geoms = topo["objects"]["output"]["geometries"]
+    geoms = topo["objects"]["census"]["geometries"]
     properties = list(geoms[0]["properties"].keys())
     for g in geoms:
         g["properties"] = {

@@ -1,18 +1,22 @@
+PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
+PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
+
 #
 # PLANS for web
 #
 
 # TODO: add ismplify 22% somewhere again
 
-PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
-PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
+map_static: visuals/static/output.topojson
 
-visuals/static/plans.topojson: mapping/output.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
-	mapshaper -i $(filter-out $<,$^) combine-files \
+visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
+	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
 	-proj aea \
 	-clean \
-	-o $@ width=975
+	-o - format=topojson width=975 \
+	| python3 preprocess.py -compress-topo \
+	> $@
 
 #
 # PROPOSED PLANS
@@ -31,7 +35,7 @@ clean_plans_artifacts:
 plans/%.geojson: plans/%/*.shp
 	mapshaper "$^" \
 	-filter-fields DISTRICT \
-	-rename-fields $(shell python3 -c 'print({"assembly":"AD","senate":"SD","congress":"CD"}["$@"[6:-8].split("_")[0]])')=DISTRICT \
+	-rename-fields $(notdir $(basename $@))=DISTRICT \
 	-o $@
 
 plans/%.zip:
@@ -44,10 +48,10 @@ plans/%.zip:
 
 current_plans: plans/senate.geojson plans/assembly.geojson plans/congress.geojson
 
-plans/%.geojson:
+plans/%.geojson: Makefile
 	mapshaper plans/current/NYS-$(shell python3 -c 'print("$(notdir $(basename $@))".capitalize().replace("Congress","Congressional"))')-Districts.shp \
 	-filter-fields DISTRICT \
-	-rename-fields $(shell python3 -c 'print({"assembly":"AD","senate":"SD","congress":"CD"}["$@"[6:-8]])')=DISTRICT \
+	-rename-fields $(notdir $(basename $@))=DISTRICT \
 	-proj wgs84 \
 	-o $@
 
@@ -61,30 +65,25 @@ plans/current.zip:
 # - Join block group shapefile with data about Asian population
 #
 
-map_static: visuals/static/output.topojson
-visuals/static/%: mapping/% preprocess.py
-	cat $< | python3 preprocess.py -compress-topo > $@
-
 # Project and make web-friendly
 # -proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs"
-%.topojson: %.geojson
-	mapshaper $< \
-	-proj aea \
-	-target 1 name="$(notdir $(basename $@))" \
-	-o $@ width=975
-
-# Join with plans
-# -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
-mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
-	mapshaper $< -o bbox $@
+# DELETED.
 
 # Filter geography down; join it with census data
+# TODO: join with plans
+# -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
 mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	mapshaper $< \
 	-filter "['047', '081', '061'].includes(COUNTYFP)" \
 	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
-	-o $@
+	-join plans/senate.geojson largest-overlap \
+	-join plans/senate_letters.geojson largest-overlap \
+	-join plans/senate_names.geojson largest-overlap \
+	-join plans/assembly.geojson largest-overlap \
+	-join plans/assembly_letters.geojson largest-overlap \
+	-join plans/assembly_names.geojson largest-overlap \
+	-o bbox $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
 	unzip -d $(dir $@) $<

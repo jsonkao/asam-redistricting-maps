@@ -3,17 +3,6 @@
 	import { unpackAttributes } from '$lib/utils';
 	import { geoPath } from 'd3-geo';
 
-	async function getPlans(fetch, path) {
-		const req = await fetch('/plans.topojson');
-		const topoData = await req.json();
-		const meshes = {};
-		const D = (x) => Object.values(x.properties)[0];
-		Object.keys(topoData.objects).forEach((k) => {
-			meshes[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
-		});
-		return meshes;
-	}
-
 	/**
 	 * A function that computes all constant data
 	 */
@@ -21,7 +10,7 @@
 		// Fetch TopoJSON data; do necessary transformations
 		const req = await fetch('/output.topojson');
 		const topoData = await req.json();
-		const obj = unpackAttributes(topoData.objects.output);
+		const obj = unpackAttributes(topoData.objects.census);
 		const data = feature(topoData, obj).features;
 
 		// Establish the static variables and the variables that change over time
@@ -43,9 +32,14 @@
 			return acc;
 		}, {});
 
-		// Fetch boundaries data
+		// Retrieve boundaries data
 		const path = geoPath();
-		const plansMeshes = await getPlans(fetch, path);
+		const plansMeshes = {};
+		const D = (x) => Object.values(x.properties)[0];
+		Object.keys(topoData.objects).forEach((k) => {
+			if (k !== 'census')
+				plansMeshes[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
+		});
 
 		return {
 			props: {
@@ -139,7 +133,8 @@
 		});
 	}
 
-	let showPluralities = false;
+	let showPluralities = true;
+
 	function color({ properties: d }) {
 		if (d.ALAND === 0) return '#fff';
 		const total = d[`${metric}_total`];
@@ -222,9 +217,11 @@
 		}
 	}
 
-	function getStats(ids) {
-		const data1 = ids.map((id) => data[idToIndex[id]].properties);
-		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] : 1), 0);
+	function getStats(input) {
+		let data1;
+		if (typeof input[0] === 'string') data1 = input.map((id) => data[idToIndex[id]].properties);
+		else data1 = input.map((f) => f.properties);
+		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
 		const output = {
@@ -251,13 +248,26 @@
 	});
 
 	const views = {
-		Manhattan: '14.2 438.5 441.3 340.8',
+		Manhattan: '80 430 500 440',
 		Brooklyn: '20 550 600 650',
 		Full: '0 0 975 1320'
 	};
 	let viewBox = views['Manhattan'];
 
-	let selectedPlan = 'senate_letters';
+	let plan = 'senate_letters';
+
+	let aggregates = [{ plan: 'senate_letters', district: 'R' }];
+
+	$: {
+		for (let i = 0; i < aggregates.length; i++) {
+			if (aggregates[i].plan === plan && !aggregates[i].stats) {
+				aggregates[i].stats = getStats(
+					data.filter(({ properties: d }) => aggregates[i].district === d[plan])
+				);
+			}
+		}
+		aggregates = aggregates;
+	}
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
@@ -340,18 +350,33 @@
 			<h3 on:click={() => (showPlans = !showPlans)}>Plans ↓</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
-					<select bind:value={selectedPlan}>
-						<optgroup label="Current districts">
-							{#each ['assembly', 'senate', 'congress'] as p}
-								<option value={p}>{planTitle(p)}</option>
-							{/each}
-						</optgroup>
-						<optgroup label="Proposed districts">
-							{#each ['assembly_letters', 'assembly_names', 'senate_letters', 'senate_names', 'congress_letters', 'congress_names'] as p}
-								<option value={p}>{planTitle(p)}</option>
-							{/each}
-						</optgroup>
-					</select>
+					<div class="plan-selector">
+						<select bind:value={plan}>
+							<optgroup label="Current districts">
+								{#each ['assembly', 'senate', 'congress'] as p}
+									<option value={p}>{planTitle(p)}</option>
+								{/each}
+							</optgroup>
+							<optgroup label="Proposed districts">
+								{#each ['assembly_letters', 'assembly_names', 'senate_letters', 'senate_names', 'congress_letters', 'congress_names'] as p}
+									<option value={p}>{planTitle(p)}</option>
+								{/each}
+							</optgroup>
+						</select>
+					</div>
+					{#each aggregates as a}
+						{#if a.plan === plan}
+							<div class="district-aggregate">
+								<p><i>{a.district}</i></p>
+								{#each groups as grp}
+									<p>Pct. {capitalize(grp)}: {pct(a.stats[`prop_${grp}`])}</p>
+								{/each}
+								<p>Income: {money(a.stats.income)}</p>
+								<p>Asian and LEP: {pct(a.stats['hhlang'])}</p>
+								<p>Pct. gov't benefits: {pct(a.stats['benefits'])}</p>
+							</div>
+						{/if}
+					{/each}
 				</div>
 			{/if}
 		</div>
@@ -431,7 +456,11 @@
 
 			{#if showPlans}
 				<g in:fade out:fade>
-					<path class="mesh-district" d={plansMeshes[selectedPlan]} />
+					<path
+						class="mesh-district"
+						style="stroke: {showPluralities ? '#000' : '#f9b964'}"
+						d={plansMeshes[plan]}
+					/>
 				</g>
 			{/if}
 
@@ -540,9 +569,9 @@
 		stroke-width: 0.2;
 	}
 	.mesh-district {
-		stroke: black;
-		stroke-width: 0.4;
+		stroke-width: 1.3;
 	}
+
 	.mesh-target {
 		stroke: black;
 		stroke-width: 1.1;
@@ -567,10 +596,10 @@
 
 	.plurality-toggle {
 		text-decoration: underline;
-    margin-left: 7px;
-    font-size: 14px;
-    line-height: 1;
-    /* text-transform: uppercase; */
+		margin-left: 7px;
+		font-size: 14px;
+		line-height: 1;
+		/* text-transform: uppercase; */
 	}
 
 	.col-head {
@@ -597,7 +626,6 @@
 	}
 
 	.color-legend button {
-
 	}
 	.plurality-legend {
 		grid-template-columns: repeat(4, 40px);
