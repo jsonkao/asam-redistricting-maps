@@ -194,7 +194,7 @@
 
 	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
 
-	onDestroy(save);
+	// onDestroy(save);
 
 	async function save() {
 		await fetch(`/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
@@ -209,9 +209,9 @@
 	});
 
 	const views = {
-		Manhattan: '14.2 438.5 441.3 790.8',
+		Manhattan: '14.2 438.5 441.3 340.8',
 		Brooklyn: '20 550 600 650',
-		Full: '0 0 975 1420'
+		Full: '0 0 975 1320'
 	};
 	let viewBox = views['Brooklyn'];
 </script>
@@ -310,9 +310,9 @@
 			</h3>
 			{#if showComms}
 				<div in:slide out:slide>
-					{#each drawings as { stats }, i}
+					{#each drawings as { name, stats }, i}
 						<div>
-							<p><i>COI {i + 1}</i> <button on:click={() => delDrawing(i)}>🗑</button></p>
+							<p><i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button></p>
 							{#each ['asian'] as grp}
 								<p>Pct. {capitalize(grp)}: {pct(stats[`prop_${grp}`])}</p>
 							{/each}
@@ -330,7 +330,6 @@
 		</div>
 	</div>
 
-	<!-- 0 0 975 1040 -->
 	<svg
 		width="1000"
 		{viewBox}
@@ -399,6 +398,7 @@
 
 	select {
 		font-size: 16px;
+		outline: none;
 		padding: 3px;
 		margin-bottom: 5px;
 	}
@@ -464,7 +464,7 @@
 	}
 	.mesh-district {
 		stroke: black;
-		stroke-width: 0.3;
+		stroke-width: 0.4;
 	}
 	.mesh-target {
 		stroke: black;
