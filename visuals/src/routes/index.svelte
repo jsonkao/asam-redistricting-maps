@@ -1,5 +1,6 @@
 <script context="module">
 	import { feature, neighbors as topoNeighbors } from 'topojson-client';
+	import { unpackAttributes } from '$lib/utils';
 
 	/**
 	 * A function that computes all constant data
@@ -8,7 +9,9 @@
 		// Fetch TopoJSON data; do necessary transformations
 		const req = await fetch('/output.topojson');
 		const topoData = await req.json();
-		const obj = Object.values(topoData.objects)[0];
+		console.dir(topoData)
+		const obj = unpackAttributes(topoData.objects.output);
+		console.log(obj)
 		const data = feature(topoData, obj).features;
 
 		// Establish the static variables and the variables that change over time

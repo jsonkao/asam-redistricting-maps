@@ -33,8 +33,8 @@ plans/%.zip:
 #
 
 map_static: visuals/static/output.topojson
-visuals/static/%: mapping/%
-	cp $< $@
+visuals/static/%: mapping/% preprocess.py
+	cat $< | python3 preprocess.py -compress-topo > $@
 
 # Project and make web-friendly
 %.topojson: %.geojson
@@ -57,6 +57,7 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-filter "['047', '081', '061'].includes(COUNTYFP)" \
 	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
+	-simplify 30% \
 	-o $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
@@ -88,8 +89,8 @@ crosswalk/crosswalk.csv: crosswalk/crosswalk.R crosswalk/nhgis_blk2010_blk2020.c
 	Rscript $< $@
 
 # Same as original block crosswalk but filtered down to areas of interest
-crosswalk/nhgis_blk2010_blk2020.csv: crosswalk/nhgis_blk2010_blk2020_ge_36.csv filter.py
-	cat $< | python3 filter.py -crosswalk > $@
+crosswalk/nhgis_blk2010_blk2020.csv: crosswalk/nhgis_blk2010_blk2020_ge_36.csv
+	cat $< | python3 preprocess.py -filter-crosswalk > $@
 
 # I manually downloaded the zipfile from https://www.nhgis.org/geographic-crosswalks
 crosswalk/nhgis_blk2010_blk2020_ge_36.csv:
@@ -99,13 +100,13 @@ crosswalk/nhgis_blk2010_blk2020_ge_36.csv:
 # CITIZEN VOTING AGE POPULATION
 #
 
-cvap/CVAP_2010.csv: cvap/CVAP_2010.zip filter.py
+cvap/CVAP_2010.csv: cvap/CVAP_2010.zip
 	unzip -d cvap $<
-	cat "cvap/CVAP Files/BlockGr.csv" | python3 filter.py -cvap > $@
+	cat "cvap/CVAP Files/BlockGr.csv" | python3 preprocess.py -filter-cvap > $@
 	rm -rf "cvap/CVAP Files"
-cvap/CVAP_2019.csv: cvap/CVAP_2019.zip filter.py
+cvap/CVAP_2019.csv: cvap/CVAP_2019.zip
 	unzip -d "cvap/CVAP Files" $<
-	cat "cvap/CVAP Files/BlockGr.csv" | python3 filter.py -cvap > $@
+	cat "cvap/CVAP Files/BlockGr.csv" | python3 preprocess.py -filter-cvap > $@
 	rm -rf "cvap/CVAP Files"
 
 cvap/CVAP_2010.zip:

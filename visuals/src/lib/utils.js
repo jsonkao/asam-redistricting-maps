@@ -12,3 +12,16 @@ export const id = f => f.properties.GEOID;
 export const district = f => f.properties.DISTRICT;
 
 export const xor = (t, u) => t && !u || u && !t;
+
+export function unpackAttributes(obj) {
+	const geoms = obj.geometries;
+	const attributes = geoms[0].properties.fields;
+	for (let i = 0; i < geoms.length; i++) {
+		const table = {};
+		for (let j = 0; j < attributes.length; j++) {
+			table[attributes[j]] = geoms[i].properties[j]
+		}
+		geoms[i].properties = table;
+	}
+	return obj;
+}
