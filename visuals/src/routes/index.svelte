@@ -9,9 +9,7 @@
 		// Fetch TopoJSON data; do necessary transformations
 		const req = await fetch('/output.topojson');
 		const topoData = await req.json();
-		console.dir(topoData)
 		const obj = unpackAttributes(topoData.objects.output);
-		console.log(obj)
 		const data = feature(topoData, obj).features;
 
 		// Establish the static variables and the variables that change over time
@@ -87,7 +85,7 @@
 		}
 	}
 
-	let period = 'past';
+	let period = 'present';
 	let variable = 'pop';
 	$: metric = staticVars.includes(variable)
 		? variable
@@ -370,7 +368,7 @@
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
-						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT, obj))}
+						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT || id(a) === id(b), obj))}
 					/>
 					<path
 						class="mesh-target"

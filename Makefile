@@ -10,22 +10,38 @@ visuals/static/%.topojson: Makefile plans/%/*.shp
 	mapshaper "$(filter-out $<,$^)" -target 1 name="$(notdir $(basename $@))" -o $@
 
 #
-# PLANS
+# PROPOSED PLANS
 #
 
-plans: clean_plans plans/senate_letters.geojson
+proposed_plans: $(PLANS:%=plans/%.zip) $(PLANS:%=plans/%.geojson)
 
 clean_plans:
-	rm -f plans/*.geojson
+	find plans -type f -name "*.png" -exec rm -rf {} \;
+	find plans -type f -name "*.csv" -exec rm -rf {} \;
+	find plans -type f -name "*.pdf" -exec rm -rf {} \;
 
-plans/%.geojson: mapping/output.geojson plans/%/*.shp
-	mapshaper "$(filter-out $<,$^)" \
-	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
-	-o $@
+plans/%.geojson: plans/%/*.shp
+	mapshaper "$^" -o $@
 
 plans/%.zip:
 	curl -L https://www.nyirc.gov/storage/plans/20210915/$(notdir $@) -o $@
 	unzip -d $(basename $@) $@
+
+#
+# CURRENT PLANS
+#
+
+current_plans: plans/senate.geojson plans/assembly.geojson plans/congress.geojson
+
+plans/%.geojson: Makefile
+	mapshaper plans/current/NYS-$(shell python3 -c 'print("$(notdir $(basename $@))".capitalize().replace("Congress","Congressional"))')-Districts.shp \
+	-proj wgs84 \
+	-o $@
+
+plans/current.zip:
+	curl -o $@ -L https://gis.ny.gov/gisdata/data/ds_1360/NYS-Legislative-Boundaries-shp.zip
+	unzip -d plans/current $@
+	touch plans/current/*
 
 #
 # MAPPING:
