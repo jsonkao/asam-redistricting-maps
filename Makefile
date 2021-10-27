@@ -5,7 +5,7 @@ PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 # PLANS for web
 #
 
-# TODO: add ismplify 22% somewhere again
+# TODO: add simplify 22% somewhere again
 
 visuals/static/points.topojson: visuals/static/output.topojson Makefile
 	mapshaper $< \
@@ -19,6 +19,7 @@ visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/se
 	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
 	-proj aea \
+	-simplify 22% \
 	-clean \
 	-o - format=topojson width=975 \
 	| python3 preprocess.py -compress-topo \
