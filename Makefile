@@ -2,26 +2,40 @@
 # PLANS for web
 #
 
+# TODO: add ismplify 22% somewhere again
+
 PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
+PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
 web_plans: visuals/static/senate_letters.topojson
 
 visuals/static/%.topojson: Makefile plans/%/*.shp
 	mapshaper "$(filter-out $<,$^)" -target 1 name="$(notdir $(basename $@))" -o $@
 
+# Export plans I only need
+plans/plans.topojson: senate_letters senate_names $(PLANS_GEOJSON)
+	mapshaper -i $^ combine-files \
+	-o $@
+
 #
 # PROPOSED PLANS
 #
 
+plans: clean_plans $(PLANS_GEOJSON)
+clean_plans:
+	rm -f $(PLANS_GEOJSON)
 proposed_plans: $(PLANS:%=plans/%.zip) $(PLANS:%=plans/%.geojson)
 
-clean_plans:
+clean_plans_artifacts:
 	find plans -type f -name "*.png" -exec rm -rf {} \;
 	find plans -type f -name "*.csv" -exec rm -rf {} \;
 	find plans -type f -name "*.pdf" -exec rm -rf {} \;
 
 plans/%.geojson: plans/%/*.shp
-	mapshaper "$^" -o $@
+	mapshaper "$^" \
+	-filter-fields DISTRICT \
+	-rename-fields $(shell python3 -c 'print({"assembly":"AD","senate":"SD","congress":"CD"}["$@"[6:-8].split("_")[0]])')=DISTRICT \
+	-o $@
 
 plans/%.zip:
 	curl -L https://www.nyirc.gov/storage/plans/20210915/$(notdir $@) -o $@
@@ -35,6 +49,8 @@ current_plans: plans/senate.geojson plans/assembly.geojson plans/congress.geojso
 
 plans/%.geojson: Makefile
 	mapshaper plans/current/NYS-$(shell python3 -c 'print("$(notdir $(basename $@))".capitalize().replace("Congress","Congressional"))')-Districts.shp \
+	-filter-fields DISTRICT \
+	-rename-fields $(shell python3 -c 'print({"assembly":"AD","senate":"SD","congress":"CD"}["$@"[6:-8]])')=DISTRICT \
 	-proj wgs84 \
 	-o $@
 
@@ -53,17 +69,17 @@ visuals/static/%: mapping/% preprocess.py
 	cat $< | python3 preprocess.py -compress-topo > $@
 
 # Project and make web-friendly
+# -proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs"
 %.topojson: %.geojson
 	mapshaper $< \
-	-proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs" \
+	-proj aea \
 	-target 1 name="$(notdir $(basename $@))" \
 	-o $@ width=975
 
 # Join with plans
 mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 	mapshaper $< \
-	-join "$(filter-out $<,$^)" fields=DISTRICT,POPULATION,IDEAL_VALU largest-overlap \
-	-join mapping/ntas.geojson fields=ntaname largest-overlap \
+	-join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap \
 	-rename-fields NEIGHBORHOOD=ntaname \
 	-o bbox $@
 
@@ -73,7 +89,6 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-filter "['047', '081', '061'].includes(COUNTYFP)" \
 	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
-	-simplify 22% \
 	-o $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
