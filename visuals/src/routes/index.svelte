@@ -259,7 +259,8 @@
 		Full: [0, 0, 975, 1420]
 	};
 	let viewBox = views['Manhattan'];
-	$: labelSize = 16 / (1000 / viewBox[2]);
+	let clientWidth;
+	$: labelSize = 16 / ((clientWidth - 410) / viewBox[2]);
 
 	let plan = 'assembly_letters';
 
@@ -283,7 +284,7 @@
 	}
 </script>
 
-<div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
+<div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
 	<div class="controls">
 		<select
 			bind:value={variable}
@@ -447,6 +448,7 @@
 		viewBox={viewBox.join(' ')}
 		on:mousedown={() => (dragging = true)}
 		on:mouseup={() => (dragging = drawing = false)}
+		
 		style="--font-size: {labelSize}px"
 	>
 		<g>
