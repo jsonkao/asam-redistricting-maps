@@ -25,13 +25,15 @@ interpolate <- function(data) {
     summarize(value = sum(value, na.rm = T))
 }
 
+county <- c("Kings", "New York", "Queens")
+
 #' # Decennial population data; commented out bc we only care about CVAP populations now
 
 # 2010 population data interpolated to 2020 block groups (asian = Asian alone)
 pop10_bg20 <- get_decennial(
   geography = "block group",
   state = "New York",
-  county = "Kings",
+  county = county,
   variables = c(asian = "P003005", total = "P001001", white = "P003002", black = "P003003", hispanic = "P009002"),
   year = 2010
 ) %>%
@@ -43,7 +45,7 @@ pop10_bg20 <- get_decennial(
 pop20_bg20 <- get_decennial(
   geography = "block group",
   state = "New York",
-  county = "Kings",
+  county = county,
   variables = c(total = "P1_001N", asian = "P1_006N", white = "P1_003N", black = "P1_004N", hispanic = "P2_002N"),
   sumfile = "pl",
   year = 2020
@@ -94,7 +96,7 @@ get_acs_brooklyn <- function(vars, name = "", geo = "block group") {
   data <- get_acs(
     geography = geo,
     state = "New York",
-    county = "Kings",
+    county = county,
     variables = vars,
     year = 2019
   ) %>% 

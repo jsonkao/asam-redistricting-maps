@@ -25,6 +25,11 @@
 			}, [])
 		];
 
+		const idToIndex = data.reduce((acc, f, i) => {
+			acc[f.properties.GEOID] = i;
+			return acc;
+		}, {});
+
 		return {
 			props: {
 				topoData,
@@ -33,6 +38,7 @@
 				neighbors: topoNeighbors(obj.geometries),
 				dynamicVars,
 				staticVars,
+				idToIndex,
 				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'] // Aside from race
 			}
@@ -51,8 +57,17 @@
 	import { pct, capitalize, money, isNum, id, district, xor } from '$lib/utils';
 	import { colors, levels, groups, periods, variablesLong } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
+	import { onMount, onDestroy } from 'svelte';
 
-	export let topoData, obj, neighbors, data, dynamicVars, staticVars, tractVars, pluralityVars;
+	export let topoData,
+		obj,
+		neighbors,
+		data,
+		dynamicVars,
+		staticVars,
+		tractVars,
+		pluralityVars,
+		idToIndex;
 
 	const path = geoPath();
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
@@ -90,6 +105,7 @@
 		(breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
 	function color({ properties: d }) {
+		if (d.ALAND === 0) return '#fff';
 		const total = d[`${metric}_total`];
 
 		if (pluralityVars.includes(metric)) {
@@ -99,6 +115,7 @@
 			return schemeBlues[periods.length][periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
 			if (!isNum(getValue(d))) return '#ddd';
+			if (total <= 10) return '#fff';
 			for (let i = 1; i < breaks.length; i++) {
 				if (getValue(d) < breaks[i]) return schemeBlues[breaks.length][i];
 			}
@@ -108,7 +125,7 @@
 			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 			const majority = groups.filter((g) => p(g) > 0.5)[0];
 			if (majority !== undefined) {
-				return colors[majority] + levels[total < 100 ? 0 : total < 200 ? 1 : 2];
+				return colors[majority] + levels[total < 130 ? 0 : total < 200 ? 1 : 2];
 			}
 
 			const pluralities = [...groups].sort((a, b) => p(b) - p(a));
@@ -139,8 +156,8 @@
 				const hull = concaveman(
 					mesh((a, b) => xor(bgs.has(id(a)), bgs.has(id(b)))).coordinates.flat()
 				);
-				const indices = data
-					.map((f, i) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), i])
+				const ids = data
+					.map((f) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), id(f)])
 					.filter((d) => d[0])
 					.map((d) => d[1]);
 				drawings = [
@@ -150,8 +167,8 @@
 							type: 'LineString',
 							coordinates: hull
 						}),
-						indices,
-						stats: getStats(indices)
+						ids,
+						stats: getStats(ids)
 					}
 				];
 			}
@@ -159,14 +176,15 @@
 		}
 	}
 
-	function getStats(indices) {
-		const data1 = indices.map((i) => data[i].properties);
+	function getStats(ids) {
+		const data1 = ids.map((id) => data[idToIndex[id]].properties);
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
 		const output = {
 			income: wMean('income'),
-			hhlang: prop('hhlang', 'asian')
+			hhlang: prop('hhlang', 'asian'),
+			benefits: prop('families', 'benefits')
 		};
 		groups.forEach((g) => (output['prop_' + g] = prop('pop20', g)));
 		return output;
@@ -175,6 +193,27 @@
 	$: console.log(drawings);
 
 	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
+
+	onDestroy(save);
+
+	async function save() {
+		await fetch(`/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
+	}
+
+	onMount(async () => {
+		const req = await fetch(`/data.json`);
+		drawings = (await req.json()).map((r) => ({
+			...r,
+			stats: getStats(r.ids)
+		}));
+	});
+
+	const views = {
+		Manhattan: '14.2 438.5 441.3 790.8',
+		Brooklyn: '20 550 600 650',
+		Full: '0 0 975 1420'
+	};
+	let viewBox = views['Brooklyn'];
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
@@ -242,17 +281,6 @@
 		{/if}
 
 		<div class="stats">
-			<h3 on:click={() => (showStats = !showStats)}>Redistricting ↓</h3>
-			{#if showStats}
-				<div in:slide out:slide>
-					<p style="text-decoration: underline">Senate District {districtTarget}</p>
-					<p>{pct(sums['asian'] / sums.total)} Asian</p>
-					<p>{Math.abs(delta).toLocaleString()} people {delta >= 0 ? 'above' : 'below'}</p>
-				</div>
-			{/if}
-		</div>
-
-		<div class="stats">
 			<h3 on:click={() => (showPlans = !showPlans)}>Plans ↓</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
@@ -260,6 +288,17 @@
 						<input type="checkbox" bind:checked={showSenatePlans} />
 						State Senate, "Letters"
 					</label>
+				</div>
+			{/if}
+		</div>
+
+		<div class="stats">
+			<h3 on:click={() => (showStats = !showStats)}>Redistricting ↓</h3>
+			{#if showStats}
+				<div in:slide out:slide>
+					<p><i>Senate District {districtTarget}</i></p>
+					<p>Pct. Asian: {pct(sums['asian'] / sums.total, 2)}</p>
+					<p>{Math.abs(delta).toLocaleString()} people {delta >= 0 ? 'above' : 'below'}</p>
 				</div>
 			{/if}
 		</div>
@@ -279,17 +318,23 @@
 							{/each}
 							<p>Income: {money(stats.income)}</p>
 							<p>Asian and LEP: {pct(stats['hhlang'])}</p>
+							<p>Pct. gov't benefits: {pct(stats['benefits'])}</p>
 						</div>
 					{/each}
+
+					<button on:click={save} style="font-size: 13px;">
+						<b>[SAVE]</b>
+					</button>
 				</div>
 			{/if}
 		</div>
 	</div>
 
+	<!-- 0 0 975 1040 -->
 	<svg
 		width="1000"
-		viewBox="0 0 975 1040"
-		on:mousedown={() => (dragging = drawing)}
+		{viewBox}
+		on:mousedown={() => (dragging = true)}
 		on:mouseup={() => (dragging = drawing = false)}
 	>
 		<g>
@@ -311,26 +356,39 @@
 		<g class="meshes">
 			<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
 
-			{#each drawings as { outline }}
-				<path class="mesh-target" d={outline} />
-			{/each}
+			{#if showComms}
+				<g in:fade out:fade>
+					{#each drawings as { outline }}
+						<path class="mesh-target" d={outline} />
+					{/each}
+				</g>
+			{/if}
 
 			{#if showSenatePlans}
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
-						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT))}
+						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT, obj))}
 					/>
 					<path
 						class="mesh-target"
 						d={path(
-							mesh((a, b) => xor(district(a) === districtTarget, district(b) === districtTarget))
+							mesh((a, b) =>
+								xor(district(a) === districtTarget, district(b) === districtTarget, obj)
+							)
 						)}
 					/>
 				</g>
 			{/if}
 		</g>
 	</svg>
+
+	<div class="views">
+		<h3>Views</h3>
+		{#each Object.keys(views) as v}
+			<button on:click={() => (viewBox = views[v])}>{v}</button>
+		{/each}
+	</div>
 </div>
 
 <style>
@@ -352,6 +410,23 @@
 		padding-left: 15px;
 	}
 
+	.views {
+		position: fixed;
+		right: 25px;
+		top: 22px;
+	}
+
+	.views h3 {
+		font-size: 16px;
+	}
+	.views button {
+		display: block;
+		font-size: 16px;
+		text-align: right;
+		line-height: 1.3;
+		text-decoration: underline;
+	}
+
 	.stats div {
 		margin-bottom: 20px;
 	}
@@ -368,7 +443,7 @@
 	}
 
 	svg {
-		margin: 20px 0 0 var(--control-width);
+		margin-left: var(--control-width);
 		display: block;
 	}
 
@@ -389,11 +464,11 @@
 	}
 	.mesh-district {
 		stroke: black;
-		stroke-width: 0.5;
+		stroke-width: 0.3;
 	}
 	.mesh-target {
 		stroke: black;
-		stroke-width: 1.5;
+		stroke-width: 1.1;
 	}
 
 	.block-group {

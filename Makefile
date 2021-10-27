@@ -2,10 +2,12 @@
 # PLANS for web
 #
 
-web_plans: visuals/static/senate_letters.geojson
+PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
 
-visuals/static/%.geojson: Makefile plans/%/*.shp
-	mapshaper "$(filter-out $<,$^)" -o $@
+web_plans: visuals/static/senate_letters.topojson
+
+visuals/static/%.topojson: Makefile plans/%/*.shp
+	mapshaper "$(filter-out $<,$^)" -target 1 name="$(notdir $(basename $@))" -o $@
 
 #
 # PLANS
@@ -34,7 +36,7 @@ map_static: visuals/static/output.topojson
 visuals/static/%: mapping/%
 	cp $< $@
 
-# Makes files web-friendly
+# Project and make web-friendly
 %.topojson: %.geojson
 	mapshaper $< \
 	-proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs" \
@@ -52,8 +54,8 @@ mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
 # Filter geography down; join it with census data
 mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	mapshaper $< \
-	-filter "'047' === COUNTYFP && ALAND > 0" \
-	-filter-fields GEOID \
+	-filter "['047', '081', '061'].includes(COUNTYFP)" \
+	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
 	-o $@
 

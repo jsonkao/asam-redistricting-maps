@@ -1,6 +1,6 @@
 import sys
 
-BROOKLYN_FIPS = "36047"
+FIPSES = ["36047", "36061", "36081"]
 
 def filter_cvap():
     sys.stdin.reconfigure(encoding="ISO-8859-1")
@@ -8,7 +8,7 @@ def filter_cvap():
     print(next(f).strip())
     for line in f:
         geoid = line.split(',')[-6].split('US')[1]
-        if geoid.startswith(BROOKLYN_FIPS):
+        if geoid[:5] in FIPSES:
             print(line.strip())
 
 
@@ -17,7 +17,7 @@ def filter_crosswalk():
     print(next(f).strip())
     block_id_len = len("360010001001000")
     for line in f:
-        if line[block_id_len + 1 : block_id_len + 6]:
+        if line[block_id_len + 1 : block_id_len + 6] in FIPSES:
             print(line.strip())
 
 
