@@ -3,6 +3,12 @@
 	import { unpackAttributes } from '$lib/utils';
 	import { geoPath } from 'd3-geo';
 
+	async function getPoints(fetch) {
+		const req = await fetch('/points.topojson');
+		const topoData = await req.json();
+		return feature(topoData, topoData.objects.layer).features;
+	}
+
 	/**
 	 * A function that computes all constant data
 	 */
@@ -50,6 +56,7 @@
 				dynamicVars,
 				staticVars,
 				idToIndex,
+				points: await getPoints(fetch),
 				path,
 				plansMeshes,
 				tractVars: ['asiaentry', 'workers'],
@@ -65,7 +72,17 @@
 	import { slide, fade } from 'svelte/transition';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
-	import { pct, capitalize, money, isNum, id, district, xor, planTitle, planDesc } from '$lib/utils';
+	import {
+		pct,
+		capitalize,
+		money,
+		isNum,
+		id,
+		district,
+		xor,
+		planTitle,
+		planDesc
+	} from '$lib/utils';
 	import { colors, levels, groups, periods, variablesLong, seqColors } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 	import { onMount } from 'svelte';
@@ -74,6 +91,7 @@
 		obj,
 		neighbors,
 		data,
+		points,
 		dynamicVars,
 		staticVars,
 		tractVars,
@@ -120,18 +138,6 @@
 			  !staticVars.includes(metric) ||
 			  metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
 			  (breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
-
-	$: {
-		['pop10', 'pop20', 'cvap10', 'cvap19'].forEach((m) => {
-			console.log(
-				m,
-				ckmeans(
-					data.map((f) => f.properties[`${m}_asian`] / f.properties[m + '_total']).filter(isNum),
-					6
-				)
-			);
-		});
-	}
 
 	let showPluralities = true;
 
@@ -229,7 +235,7 @@
 			hhlang: prop('hhlang', 'asian'),
 			benefits: prop('families', 'benefits')
 		};
-		groups.forEach((g) => (output['prop_' + g] = prop('pop20', g)));
+		['pop20', 'cvap19'].forEach((m) => groups.forEach((g) => (output[m + g] = prop(m, g))));
 		return output;
 	}
 
@@ -248,25 +254,32 @@
 	});
 
 	const views = {
-		Manhattan: '80 430 500 440',
-		Brooklyn: '20 550 600 650',
-		Full: '0 0 975 1320'
+		Manhattan: [80, 430, 500, 440],
+		Brooklyn: [20, 550, 600, 600],
+		Full: [0, 0, 975, 1420]
 	};
 	let viewBox = views['Manhattan'];
+	$: labelSize = 16 / (1000 / viewBox[2]);
 
-	let plan = 'senate_letters';
+	let plan = 'assembly_letters';
 
-	let aggregates = [{ plan: 'senate_letters', district: 'R' }, { plan: 'senate_letters', district: 'BH' }];
+	let aggregates = [];
+	let stats = {};
 
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
-			if (aggregates[i].plan === plan && !aggregates[i].stats) {
-				aggregates[i].stats = getStats(
-					data.filter(({ properties: d }) => aggregates[i].district === d[plan])
+			const [aPlan, aDistrict] = aggregates[i].split(',');
+			if (aPlan === plan && !(aggregates[i] in stats)) {
+				stats[aggregates[i]] = getStats(
+					data.filter(({ properties: d }) => aDistrict === '' + d[plan])
 				);
 			}
 		}
-		aggregates = aggregates;
+	}
+
+	function handleLabelClick(id) {
+		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);
+		else aggregates = [...aggregates, id];
 	}
 </script>
 
@@ -274,7 +287,7 @@
 	<div class="controls">
 		<select
 			bind:value={variable}
-			style="width: {staticVars.includes(variable) ? 'auto' : 'var(--control-width)'}"
+			style="width: {staticVars.includes(variable) ? 'auto' : 'calc(var(--control-width) - 20px)'}"
 		>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
@@ -365,15 +378,24 @@
 						</select>
 					</div>
 					{#each aggregates as a}
-						{#if a.plan === plan}
+						{#if a.split(',')[0].split('_')[0] === plan.split('_')[0]}
 							<div class="district-aggregate">
 								<p><i>{planTitle(a)}</i></p>
-								{#each groups as grp}
-									<p>Pct. {capitalize(grp)}: {pct(a.stats[`prop_${grp}`])}</p>
-								{/each}
-								<p>Income: {money(a.stats.income)}</p>
-								<p>Asian and LEP: {pct(a.stats['hhlang'])}</p>
-								<p>Pct. gov't benefits: {pct(a.stats['benefits'])}</p>
+								<table>
+									<tr>
+										<th />
+										<th>CVAP</th>
+										<th>Pop.</th>
+									</tr>
+									{#each groups as g}
+										<tr>
+											<td>{capitalize(g)}</td>
+											<td>{pct(stats[a]['cvap19' + g])}</td>
+											<td>{pct(stats[a]['pop20' + g])}</td>
+										</tr>
+									{/each}
+								</table>
+								<p>Income: {money(stats[a].income)}</p>
 							</div>
 						{/if}
 					{/each}
@@ -422,10 +444,10 @@
 	</div>
 
 	<svg
-		width="1000"
-		{viewBox}
+		viewBox={viewBox.join(' ')}
 		on:mousedown={() => (dragging = true)}
 		on:mouseup={() => (dragging = drawing = false)}
+		style="--font-size: {labelSize}px"
 	>
 		<g>
 			{#each data as f, i (id(f))}
@@ -456,11 +478,7 @@
 
 			{#if showPlans}
 				<g in:fade out:fade>
-					<path
-						class="mesh-district"
-						style="stroke: {showPluralities ? '#000' : '#f9b964'}"
-						d={plansMeshes[plan]}
-					/>
+					<path class="mesh-district" class:showPluralities d={plansMeshes[plan]} />
 				</g>
 			{/if}
 
@@ -483,6 +501,23 @@
 							)
 						)}
 					/>
+				</g>
+			{/if}
+
+			{#if showPlans}
+				<g class="labels" in:fade out:fade>
+					{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
+						{#if plan in p}
+							<text
+								{x}
+								{y}
+								class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
+								on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
+							>
+								{p[plan]}
+							</text>
+						{/if}
+					{/each}
 				</g>
 			{/if}
 		</g>
@@ -551,6 +586,7 @@
 	svg {
 		margin-left: var(--control-width);
 		display: block;
+		width: calc(100% - var(--control-width) - 150px)
 	}
 
 	svg path.head {
@@ -568,8 +604,15 @@
 		stroke: #fff;
 		stroke-width: 0.2;
 	}
-	.mesh-district {
-		stroke-width: 1.3;
+
+	.mesh-district:not(.showPluralities) {
+		stroke: #f9b964;
+		stroke-width: 1.8;
+	}
+
+	.mesh-district.showPluralities {
+		stroke: black;
+		stroke-width: 1.1;
 	}
 
 	.mesh-target {
@@ -624,9 +667,6 @@
 		position: relative;
 		right: 13px;
 	}
-
-	.color-legend button {
-	}
 	.plurality-legend {
 		grid-template-columns: repeat(4, 40px);
 	}
@@ -634,5 +674,55 @@
 	.plurality-legend p {
 		right: 0;
 		word-break: break-all;
+	}
+
+	.labels {
+		--shadow: #ffff;
+	}
+
+	.labels text {
+		font-size: var(--font-size);
+		cursor: pointer;
+		text-shadow: 0px 1px 1px var(--shadow), 0px -1px 1px var(--shadow), 1px 0px 1px var(--shadow),
+			-1px 0px 1px var(--shadow), -1.5px 0px 2px var(--shadow), 1.5px 0px 2px var(--shadow),
+			0 1.5px 2px var(--shadow), 0 -1.5px 2px var(--shadow);
+	}
+
+	.labels text.chosen {
+		font-weight: 700;
+	}
+
+	table {
+		border-collapse: collapse;
+		margin: 10px 0;
+		min-width: 200px;
+	}
+
+	table th {
+		text-align: left;
+		border-spacing: 0;
+		font-weight: 600;
+	}
+
+	table td,
+	th {
+		line-height: 1;
+		margin: 0;
+	}
+
+	table td {
+		padding: 6px 0;
+	}
+
+	tr td:not(:last-child) {
+		padding-right: 9px;
+	}
+
+	table tr {
+		border-bottom: 1px solid #ddd;
+	}
+
+	.district-aggregate p {
+		margin-bottom: 3px;
 	}
 </style>

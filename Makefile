@@ -7,7 +7,13 @@ PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
 # TODO: add ismplify 22% somewhere again
 
-map_static: visuals/static/output.topojson
+visuals/static/points.topojson: visuals/static/output.topojson Makefile
+	mapshaper $< \
+	-target 1 \
+	-drop \
+	-merge-layers force target=* \
+	-points inner \
+	-o $@
 
 visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
 	mapshaper -i $^ combine-files \
@@ -17,7 +23,6 @@ visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/se
 	-o - format=topojson width=975 \
 	| python3 preprocess.py -compress-topo \
 	> $@
-
 #
 # PROPOSED PLANS
 #
@@ -48,7 +53,7 @@ plans/%.zip:
 
 current_plans: plans/senate.geojson plans/assembly.geojson plans/congress.geojson
 
-plans/%.geojson: Makefile
+plans/%.geojson:
 	mapshaper plans/current/NYS-$(shell python3 -c 'print("$(notdir $(basename $@))".capitalize().replace("Congress","Congressional"))')-Districts.shp \
 	-filter-fields DISTRICT \
 	-rename-fields $(notdir $(basename $@))=DISTRICT \
@@ -83,6 +88,9 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-join plans/assembly.geojson largest-overlap \
 	-join plans/assembly_letters.geojson largest-overlap \
 	-join plans/assembly_names.geojson largest-overlap \
+	-join plans/congress.geojson largest-overlap \
+	-join plans/congress_letters.geojson largest-overlap \
+	-join plans/congress_names.geojson largest-overlap \
 	-o bbox $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip

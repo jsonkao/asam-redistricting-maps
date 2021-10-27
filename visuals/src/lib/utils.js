@@ -14,8 +14,9 @@ export const district = (f) => f.properties.DISTRICT;
 export const xor = (t, u) => (t && !u) || (u && !t);
 
 export const planTitle = (a) => {
-	const words = a.plan.split('_');
-	return (words.length === 1 ? '' : `“${capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + a.district;
+	const [plan, district] = a.split(',');
+	const words = plan.split('_')
+	return (words.length === 1 ? '' : `“${capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + district;
 };
 
 export const planDesc = (plan) => {
