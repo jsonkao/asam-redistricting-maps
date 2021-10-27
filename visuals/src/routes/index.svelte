@@ -1,6 +1,18 @@
 <script context="module">
-	import { feature, neighbors as topoNeighbors } from 'topojson-client';
+	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
 	import { unpackAttributes } from '$lib/utils';
+	import { geoPath } from 'd3-geo';
+
+	async function getPlans(fetch, path) {
+		const req = await fetch('/plans.topojson');
+		const topoData = await req.json();
+		const meshes = {};
+		const D = (x) => Object.values(x.properties)[0];
+		Object.keys(topoData.objects).forEach((k) => {
+			meshes[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
+		});
+		return meshes;
+	}
 
 	/**
 	 * A function that computes all constant data
@@ -31,6 +43,10 @@
 			return acc;
 		}, {});
 
+		// Fetch boundaries data
+		const path = geoPath();
+		const plansMeshes = await getPlans(fetch, path);
+
 		return {
 			props: {
 				topoData,
@@ -40,6 +56,8 @@
 				dynamicVars,
 				staticVars,
 				idToIndex,
+				path,
+				plansMeshes,
 				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'] // Aside from race
 			}
@@ -48,17 +66,15 @@
 </script>
 
 <script>
-	import { mesh as topoMesh } from 'topojson-client';
-	import { geoPath } from 'd3-geo';
 	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
-	import { pct, capitalize, money, isNum, id, district, xor } from '$lib/utils';
-	import { colors, levels, groups, periods, variablesLong } from '$lib/constants';
+	import { pct, capitalize, money, isNum, id, district, xor, planTitle } from '$lib/utils';
+	import { colors, levels, groups, periods, variablesLong, seqColors } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 
 	export let topoData,
 		obj,
@@ -68,9 +84,10 @@
 		staticVars,
 		tractVars,
 		pluralityVars,
+		plansMeshes,
+		path,
 		idToIndex;
 
-	const path = geoPath();
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const bgMesh = path(mesh((a, b) => id(a) !== id(b)));
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
@@ -91,7 +108,10 @@
 		? variable
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
-	const breaksCache = {};
+	const breaksCache = {
+		pop: [0, 0.06, 0.15, 0.25, 0.4, 0.6],
+		cvap: [0, 0.05, 0.14, 0.26, 0.41, 0.6]
+	};
 	$: getValue = {
 		income: (d) => d[metric],
 		hhlang: (d) => d[`${metric}_asian`] / d[`${metric}_total`],
@@ -100,11 +120,26 @@
 		workers: (d) => d[`${metric}_publictransport`] / d[`${metric}_total`]
 	}[metric];
 	$: breaks =
-		breaksCache[metric] ||
-		!staticVars.includes(metric) ||
-		metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
-		(breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
+		dynamicVars.includes(variable) && !showPluralities
+			? breaksCache[variable]
+			: breaksCache[metric] ||
+			  !staticVars.includes(metric) ||
+			  metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
+			  (breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
+	$: {
+		['pop10', 'pop20', 'cvap10', 'cvap19'].forEach((m) => {
+			console.log(
+				m,
+				ckmeans(
+					data.map((f) => f.properties[`${m}_asian`] / f.properties[m + '_total']).filter(isNum),
+					6
+				)
+			);
+		});
+	}
+
+	let showPluralities = false;
 	function color({ properties: d }) {
 		if (d.ALAND === 0) return '#fff';
 		const total = d[`${metric}_total`];
@@ -124,14 +159,24 @@
 		} else {
 			if (total <= 10) return '#fff';
 			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
-			const majority = groups.filter((g) => p(g) > 0.5)[0];
-			if (majority !== undefined) {
-				return colors[majority] + levels[total < 130 ? 0 : total < 200 ? 1 : 2];
-			}
 
-			const pluralities = [...groups].sort((a, b) => p(b) - p(a));
-			const distance = p(pluralities[0]) - p(pluralities[1]);
-			return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
+			if (showPluralities) {
+				const majority = groups.filter((g) => p(g) > 0.5)[0];
+				if (majority !== undefined) {
+					return colors[majority] + levels[total < 130 ? 0 : total < 200 ? 1 : 2];
+				}
+
+				const pluralities = [...groups].sort((a, b) => p(b) - p(a));
+				const distance = p(pluralities[0]) - p(pluralities[1]);
+				return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
+			} else {
+				const breaks = breaksCache[variable];
+
+				for (let i = 1; i < breaks.length; i++) {
+					if (p('asian') < breaks[i]) return seqColors[i - 1];
+				}
+				return seqColors[breaks.length - 1];
+			}
 		}
 	}
 
@@ -147,7 +192,7 @@
 	}, {});
 	$: delta = sums.total - data[0].properties.IDEAL_VALU;
 
-	let showStats, showPlans, showSenatePlans, showComms, drawing, dragging;
+	let showStats, showPlans, showComms, drawing, dragging;
 	let draggedBgs = [];
 	let drawings = [];
 	$: {
@@ -191,11 +236,7 @@
 		return output;
 	}
 
-	$: console.log(drawings);
-
 	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
-
-	// onDestroy(save);
 
 	async function save() {
 		await fetch(`/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
@@ -214,7 +255,9 @@
 		Brooklyn: '20 550 600 650',
 		Full: '0 0 975 1320'
 	};
-	let viewBox = views['Brooklyn'];
+	let viewBox = views['Manhattan'];
+
+	let selectedPlan = 'senate_letters';
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}">
@@ -242,7 +285,15 @@
 					{capitalize(p)}
 				</label>
 			{/each}
+		{/if}
 
+		{#if dynamicVars.includes(variable)}
+			<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
+				Show {showPluralities ? 'pct. asian' : 'pluralities'}
+			</button>
+		{/if}
+
+		{#if dynamicVars.includes(variable) && showPluralities}
 			<div class="legend">
 				{#each groups as grp}
 					{#each levels as lvl}
@@ -267,7 +318,11 @@
 		{:else}
 			<div class="color-legend">
 				{#each breaks as b, i}
-					<div style="background-color: {schemeBlues[breaks.length][i]}" />
+					<div
+						style="background-color: {dynamicVars.includes(variable)
+							? seqColors[i]
+							: schemeBlues[breaks.length][i]}"
+					/>
 				{/each}
 				{#each breaks as b}
 					<p>
@@ -285,10 +340,18 @@
 			<h3 on:click={() => (showPlans = !showPlans)}>Plans ↓</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
-					<label>
-						<input type="checkbox" bind:checked={showSenatePlans} />
-						State Senate, "Letters"
-					</label>
+					<select bind:value={selectedPlan}>
+						<optgroup label="Current districts">
+							{#each ['assembly', 'senate', 'congress'] as p}
+								<option value={p}>{planTitle(p)}</option>
+							{/each}
+						</optgroup>
+						<optgroup label="Proposed districts">
+							{#each ['assembly_letters', 'assembly_names', 'senate_letters', 'senate_names', 'congress_letters', 'congress_names'] as p}
+								<option value={p}>{planTitle(p)}</option>
+							{/each}
+						</optgroup>
+					</select>
 				</div>
 			{/if}
 		</div>
@@ -313,7 +376,9 @@
 				<div in:slide out:slide>
 					{#each drawings as { name, stats }, i}
 						<div>
-							<p><i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button></p>
+							<p>
+								<i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button>
+							</p>
 							{#each ['asian'] as grp}
 								<p>Pct. {capitalize(grp)}: {pct(stats[`prop_${grp}`])}</p>
 							{/each}
@@ -343,8 +408,8 @@
 					class="block-group"
 					class:head={draggedBgs[0] === id(f)}
 					d={path(f)}
-					fill={color(f, metric, period)}
-					on:click={() => showSenatePlans && neighbor(i)}
+					fill={color(f, metric, period, showPluralities)}
+					on:click={() => false && neighbor(i)}
 					on:contextmenu|preventDefault={() => console.log(f.properties)}
 					on:mousemove|preventDefault={() =>
 						drawing &&
@@ -364,11 +429,22 @@
 				</g>
 			{/if}
 
-			{#if showSenatePlans}
+			{#if showPlans}
+				<g in:fade out:fade>
+					<path class="mesh-district" d={plansMeshes[selectedPlan]} />
+				</g>
+			{/if}
+
+			{#if false}
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
-						d={path(mesh((a, b) => a.properties.DISTRICT !== b.properties.DISTRICT || id(a) === id(b), obj))}
+						d={path(
+							mesh(
+								(a, b) => a.properties.DISTRICT !== b.properties.DISTRICT || id(a) === id(b),
+								obj
+							)
+						)}
 					/>
 					<path
 						class="mesh-target"
@@ -489,6 +565,14 @@
 		margin-left: 5px;
 	}
 
+	.plurality-toggle {
+		text-decoration: underline;
+    margin-left: 7px;
+    font-size: 14px;
+    line-height: 1;
+    /* text-transform: uppercase; */
+	}
+
 	.col-head {
 		text-transform: uppercase;
 		font-size: 11px;
@@ -512,6 +596,9 @@
 		right: 13px;
 	}
 
+	.color-legend button {
+
+	}
 	.plurality-legend {
 		grid-template-columns: repeat(4, 40px);
 	}

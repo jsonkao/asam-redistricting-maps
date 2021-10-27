@@ -7,15 +7,12 @@
 PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
-web_plans: visuals/static/senate_letters.topojson
-
-visuals/static/%.topojson: Makefile plans/%/*.shp
-	mapshaper "$(filter-out $<,$^)" -target 1 name="$(notdir $(basename $@))" -o $@
-
-# Export plans I only need
-plans/plans.topojson: senate_letters senate_names $(PLANS_GEOJSON)
-	mapshaper -i $^ combine-files \
-	-o $@
+visuals/static/plans.topojson: mapping/output.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
+	mapshaper -i $(filter-out $<,$^) combine-files \
+	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
+	-proj aea \
+	-clean \
+	-o $@ width=975
 
 #
 # PROPOSED PLANS
@@ -47,7 +44,7 @@ plans/%.zip:
 
 current_plans: plans/senate.geojson plans/assembly.geojson plans/congress.geojson
 
-plans/%.geojson: Makefile
+plans/%.geojson:
 	mapshaper plans/current/NYS-$(shell python3 -c 'print("$(notdir $(basename $@))".capitalize().replace("Congress","Congressional"))')-Districts.shp \
 	-filter-fields DISTRICT \
 	-rename-fields $(shell python3 -c 'print({"assembly":"AD","senate":"SD","congress":"CD"}["$@"[6:-8]])')=DISTRICT \
@@ -77,11 +74,9 @@ visuals/static/%: mapping/% preprocess.py
 	-o $@ width=975
 
 # Join with plans
+# -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
 mapping/output.geojson: mapping/census.geojson plans/senate_letters/*.shp
-	mapshaper $< \
-	-join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap \
-	-rename-fields NEIGHBORHOOD=ntaname \
-	-o bbox $@
+	mapshaper $< -o bbox $@
 
 # Filter geography down; join it with census data
 mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv

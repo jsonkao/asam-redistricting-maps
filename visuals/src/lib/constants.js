@@ -18,3 +18,12 @@ export const variablesLong = {
 	cvap: 'Citizen voting age population by race',
 	pop: 'Population by race'
 };
+
+export const seqColors = [
+	'#ecf2f7',
+	'#cabed8',
+	'#aa8ab6',
+	'#8b5794',
+	'#6d2c71',
+	'#4b134c',
+]
