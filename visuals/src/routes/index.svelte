@@ -123,8 +123,8 @@
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	const breaksCache = {
-		pop: [0, 0.06, 0.15, 0.25, 0.4, 0.6],
-		cvap: [0, 0.05, 0.14, 0.26, 0.41, 0.6]
+		pop: [0, 0.08, 0.2, 0.37, 0.57],
+		cvap: [0, 0.08, 0.2, 0.37, 0.57]
 	};
 	$: getValue = {
 		income: (d) => d[metric],
@@ -247,13 +247,21 @@
 		await fetch(`/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
 	}
 
-	onMount(async () => {
+	let fetchedDrawings;
+	$: {
+		if (showComms && !fetchedDrawings) {
+			fetchDrawings();
+			fetchedDrawings = true;
+		}
+	}
+
+	async function fetchDrawings() {
 		const req = await fetch(`/data.json`);
 		drawings = (await req.json()).map((r) => ({
 			...r,
 			stats: getStats(r.ids)
 		}));
-	});
+	};
 
 	const views = {
 		Manhattan: [80, 430, 500, 440],
@@ -266,7 +274,7 @@
 
 	let plan = 'assembly_letters';
 
-	let aggregates = [];/*[
+	let aggregates = []; /*[
 		'assembly,65',
 		'assembly_letters,BM',
 		'assembly_names,STHMNHTN',
@@ -297,7 +305,6 @@
 			);
 		});
 	}
-
 
 	function handleLabelClick(id) {
 		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);
@@ -361,12 +368,15 @@
 				{/each}
 			</div>
 		{:else}
-			<div class="color-legend">
+			<div
+				class="color-legend"
+				style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 40px);"
+			>
 				{#each breaks as b, i}
 					<div
 						style="background-color: {dynamicVars.includes(variable)
 							? seqColors[i]
-							: schemeBlues[breaks.length][i]}"
+							: schemeBlues[breaks.length][i]};"
 					/>
 				{/each}
 				{#each breaks as b}
@@ -627,12 +637,7 @@
 		stroke-width: 0.2;
 	}
 
-	.mesh-district:not(.showPluralities) {
-		stroke: #f9b964;
-		stroke-width: 1.8;
-	}
-
-	.mesh-district.showPluralities {
+	.mesh-district {
 		stroke: black;
 		stroke-width: 1.1;
 	}
@@ -679,7 +684,6 @@
 		display: grid;
 		grid-template-rows: 12px 1fr;
 		row-gap: 4px;
-		grid-template-columns: repeat(6, 40px);
 	}
 
 	.color-legend p {
