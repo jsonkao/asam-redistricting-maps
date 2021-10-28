@@ -286,6 +286,18 @@
 			}
 		}
 	}
+	$: {
+		['pop10', 'pop20', 'cvap10', 'cvap19'].forEach((m) => {
+			console.log(
+				m,
+				ckmeans(
+					data.map((f) => f.properties[`${m}_asian`] / f.properties[m + '_total']).filter(isNum),
+					5
+				)
+			);
+		});
+	}
+
 
 	function handleLabelClick(id) {
 		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);

@@ -19,7 +19,7 @@ export const variablesLong = {
 	pop: 'Population by race'
 };
 
-export const seqColors = [
+export const seqColors = ['#fee5d9','#fcbba1','#fc9272','#fb6a4a','#de2d26'] || [
 	'#ecf2f7',
 	'#cabed8',
 	'#aa8ab6',
