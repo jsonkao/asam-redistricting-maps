@@ -29,8 +29,12 @@ export function unpackAttributes(obj) {
 	const attributes = geoms[0].properties.fields;
 	for (let i = 0; i < geoms.length; i++) {
 		const table = {};
+		geoms[i].properties = geoms[i].properties.d.split(',')
 		for (let j = 0; j < attributes.length; j++) {
-			table[attributes[j]] = geoms[i].properties[j];
+			let v = geoms[i].properties[j];
+			if (v === '') v = null;
+			else if (!isNaN(+v) && attributes[j] !== 'GEOID') v = +v;
+			table[attributes[j]] = v;
 		}
 		geoms[i].properties = table;
 	}

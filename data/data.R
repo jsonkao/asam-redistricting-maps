@@ -6,7 +6,7 @@
 
 #' # Libraries, helper functions
 
-library(tidycensus)
+suppressPackageStartupMessages(library(tidycensus))
 library(stringr)
 suppressPackageStartupMessages(library(dplyr))
 census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
@@ -22,7 +22,8 @@ interpolate <- function(data) {
     mutate(value_weighted = value * weight) %>%
     select(GEOID = blk_group20, group, value = value_weighted) %>%
     group_by(GEOID, group) %>%
-    summarize(value = sum(value, na.rm = T))
+    summarize(value = sum(value, na.rm = T)) %>% 
+    mutate(value = round(value, 1))
 }
 
 county <- c("Kings", "New York", "Queens")

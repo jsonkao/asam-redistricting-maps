@@ -7,13 +7,34 @@ def compress_topojson():
     topo = json.load(sys.stdin)
     geoms = topo["objects"]["census"]["geometries"]
     properties = list(geoms[0]["properties"].keys())
+
+    compress_names = False
+    if compress_names:
+        names = {"senate_names": set(), "assembly_names": set(), "congress_names": set()}
+        keys = names.keys()
+        for g in geoms:
+            for k in keys:
+                if g['properties'][k]:
+                    names[k].add(g['properties'][k])
+        names_index = {}
+        for k in keys:
+            names[k] = list(names[k])
+            names_index[k] = {names[k][i]: i for i in range(len(names[k]))}
+        for g in geoms:
+            for k in keys:
+                g["properties"][k] = names_index[k][g["properties"][k]]
     for g in geoms:
         g["properties"] = {
-            i: g["properties"][properties[i]]
-            for i in range(len(properties))
-            if g["properties"][properties[i]] is not None
+            "d": ",".join(
+                [
+                    str(g["properties"][properties[i]] or "")
+                    for i in range(len(properties))
+                ]
+            )
         }
     geoms[0]["properties"]["fields"] = properties
+    if compress_names:
+        geoms[0]["properties"]["names"] = names
     json.dump(topo, sys.stdout)
 
 

@@ -27,3 +27,5 @@ export const seqColors = ['#fee5d9','#fcbba1','#fc9272','#fb6a4a','#de2d26'] || 
 	'#6d2c71',
 	'#4b134c',
 ]
+
+export const schemeBlues = ['#eff3ff', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'];

@@ -17,6 +17,7 @@
 		const req = await fetch('/output.topojson');
 		const topoData = await req.json();
 		const obj = unpackAttributes(topoData.objects.census);
+		console.log(obj.geometries[0])
 		const data = feature(topoData, obj).features;
 
 		// Establish the static variables and the variables that change over time
@@ -69,7 +70,6 @@
 </script>
 
 <script>
-	import { schemeBlues } from 'd3-scale-chromatic';
 	import ckmeans from 'ckmeans';
 	import { slide, fade } from 'svelte/transition';
 	import * as concaveman from 'concaveman';
@@ -85,10 +85,8 @@
 		planTitle,
 		planDesc
 	} from '$lib/utils';
-	import { colors, levels, groups, periods, variablesLong, seqColors } from '$lib/constants';
+	import { colors, levels, groups, periods, variablesLong, seqColors, schemeBlues } from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
-	import { onMount } from 'svelte';
-
 	export let topoData,
 		obj,
 		neighbors,
@@ -270,7 +268,7 @@
 	};
 	let viewBox = views['Manhattan'];
 	let clientWidth;
-	$: labelSize = 16 / ((clientWidth - 410) / viewBox[2]);
+	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
 
 	let plan = 'assembly_letters';
 
@@ -293,17 +291,6 @@
 				);
 			}
 		}
-	}
-	$: {
-		['pop10', 'pop20', 'cvap10', 'cvap19'].forEach((m) => {
-			console.log(
-				m,
-				ckmeans(
-					data.map((f) => f.properties[`${m}_asian`] / f.properties[m + '_total']).filter(isNum),
-					5
-				)
-			);
-		});
 	}
 
 	function handleLabelClick(id) {
@@ -392,7 +379,7 @@
 		{/if}
 
 		<div class="stats">
-			<h3 on:click={() => (showPlans = !showPlans)}>Plans ↓</h3>
+			<h3 on:click={() => {showPlans = !showPlans; showStats = false; showComms = false;}}>Plans ↓</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
 					<div class="plan-selector">
@@ -436,7 +423,7 @@
 		</div>
 
 		<div class="stats">
-			<h3 on:click={() => (showStats = !showStats)}>Redistricting ↓</h3>
+			<h3 on:click={() => {showStats = !showStats; showPlans = false; showComms = false;}}>Redistricting ↓</h3>
 			{#if showStats}
 				<div in:slide out:slide>
 					<p><i>Senate District {districtTarget}</i></p>
@@ -448,7 +435,7 @@
 
 		<div class="stats">
 			<h3>
-				<button on:click={() => (showComms = !showComms)}>Communities ↓</button>
+				<button on:click={() => {showComms = !showComms; showStats = false; showPlans = false;}}>Communities ↓</button>
 				<button on:click={() => (drawing = true)}>+</button>
 			</h3>
 			{#if showComms}
