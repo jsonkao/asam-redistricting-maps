@@ -25,8 +25,10 @@
 			...data.reduce((acc, val) => {
 				const fields = Object.keys(val.properties)
 					.filter(
-						// District plans' fields are all uppercase
-						(k) => [...dynamicVars, 'GEOID'].every((v) => !k.includes(v)) && k === k.toLowerCase()
+						(k) =>
+							[...dynamicVars, 'GEOID', 'senate', 'assembly', 'congress'].every(
+								(v) => !k.includes(v)
+							) && k === k.toLowerCase()
 					)
 					.map((k) => k.split('_')[0]);
 				return new Set([...acc, ...fields]);
@@ -264,7 +266,14 @@
 
 	let plan = 'assembly_letters';
 
-	let aggregates = [];
+	let aggregates = [];/*[
+		'assembly,65',
+		'assembly_letters,BM',
+		'assembly_names,STHMNHTN',
+		'senate,26',
+		'senate_letters,BH',
+		'senate_names,DWNTNBRKLN'
+	];*/
 	let stats = {};
 
 	$: {
@@ -381,7 +390,7 @@
 					{#each aggregates as a}
 						{#if a.split(',')[0].split('_')[0] === plan.split('_')[0]}
 							<div class="district-aggregate">
-								<p><i>{planTitle(a)}</i></p>
+								<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
 								<table>
 									<tr>
 										<th />
@@ -448,7 +457,6 @@
 		viewBox={viewBox.join(' ')}
 		on:mousedown={() => (dragging = true)}
 		on:mouseup={() => (dragging = drawing = false)}
-		
 		style="--font-size: {labelSize}px"
 	>
 		<g>
@@ -588,7 +596,7 @@
 	svg {
 		margin-left: var(--control-width);
 		display: block;
-		width: calc(100% - var(--control-width) - 150px)
+		width: calc(100% - var(--control-width) - 150px);
 	}
 
 	svg path.head {
@@ -655,10 +663,10 @@
 	}
 
 	.color-legend {
-		margin: 23px 0;
+		margin: 19px 0;
 		display: grid;
 		grid-template-rows: 12px 1fr;
-		row-gap: 5px;
+		row-gap: 4px;
 		grid-template-columns: repeat(6, 40px);
 	}
 
@@ -684,6 +692,7 @@
 
 	.labels text {
 		font-size: var(--font-size);
+		text-anchor: middle;
 		cursor: pointer;
 		text-shadow: 0px 1px 1px var(--shadow), 0px -1px 1px var(--shadow), 1px 0px 1px var(--shadow),
 			-1px 0px 1px var(--shadow), -1.5px 0px 2px var(--shadow), 1.5px 0px 2px var(--shadow),
@@ -696,7 +705,7 @@
 
 	table {
 		border-collapse: collapse;
-		margin: 10px 0;
+		margin: 4px 0;
 		min-width: 200px;
 	}
 
@@ -710,10 +719,11 @@
 	th {
 		line-height: 1;
 		margin: 0;
+		font-size: 15px;
 	}
 
 	table td {
-		padding: 6px 0;
+		padding: 3px 0;
 	}
 
 	tr td:not(:last-child) {
@@ -724,7 +734,15 @@
 		border-bottom: 1px solid #ddd;
 	}
 
-	.district-aggregate p {
-		margin-bottom: 3px;
+	.stats .district-aggregate {
+		margin-bottom: 11px;
+	}
+
+	.district-aggregate p:first-child {
+		cursor: pointer;
+	}
+
+	.stats .plan-selector {
+		margin-bottom: 10px;
 	}
 </style>
