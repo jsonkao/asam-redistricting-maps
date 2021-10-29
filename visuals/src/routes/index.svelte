@@ -136,8 +136,10 @@
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	const breaksCache = {
-		pop: [0, 0.08, 0.2, 0.37, 0.57],
-		cvap: [0, 0.08, 0.2, 0.37, 0.57]
+		// pop: [0, 0.08, 0.2, 0.37, 0.57],
+		// cvap: [0, 0.08, 0.2, 0.37, 0.57],
+		pop: [0, 0.1, 0.2, 0.4, 0.6],
+		cvap: [0, 0.1, 0.2, 0.4, 0.6]
 	};
 	$: getValue = {
 		income: (d) => d[metric],
@@ -275,7 +277,7 @@
 	let clientWidth;
 	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
 
-	let plan = 'assembly_letters';
+	let plan = 'assembly';
 
 	let aggregates = []; /*[
 		'assembly,65',
@@ -431,7 +433,7 @@
 										</tr>
 									{/each}
 								</table>
-								<p>
+								<p class="table-footer">
 									Income: {money(stats[a].income) +
 										(changingLines
 											? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
@@ -732,6 +734,10 @@
 	th {
 		line-height: 1;
 		margin: 0;
+		font-size: 15px;
+	}
+
+	.table-footer {
 		font-size: 15px;
 	}
 
