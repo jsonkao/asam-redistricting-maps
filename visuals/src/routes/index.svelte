@@ -95,6 +95,7 @@
 		idealValues
 	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
+	import Svg from '$lib/svg.svelte';
 
 	export let topoData,
 		obj,
@@ -242,7 +243,7 @@
 		const req = await fetch(`${base}/output_congress.topojson`);
 		const topoData = await req.json();
 		congressMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
-			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)))
+			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
 			return acc;
 		}, {});
 	}
@@ -251,6 +252,7 @@
 		let data1;
 		if (typeof input[0] === 'string') data1 = input.map((id) => data[idToIndex[id]].properties);
 		else data1 = input.map((f) => f.properties);
+		console.log(data1)
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
@@ -267,7 +269,11 @@
 	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
 
 	async function save() {
-		await fetch(`${base}/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
+		try {
+			await fetch(`${base}/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
+		} catch (e) {
+			console.error(e);
+		}
 	}
 
 	let fetchedDrawings;
@@ -323,12 +329,12 @@
 		else aggregates = [...aggregates, id];
 	}
 
-	const startDrag = () => dragging = true;
+	const startDrag = () => (dragging = true);
 	const endDrag = () => (dragging = drawing = false);
 	const handleMouseMove = (f) =>
-						drawing &&
-						dragging &&
-						(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)))
+		drawing &&
+		dragging &&
+		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
@@ -429,7 +435,7 @@
 					<div class="plan-selector">
 						<select bind:value={plan}>
 							{#each ['assembly', 'senate', 'congress'] as scope}
-								<optgroup label="{capitalize(scope)}">
+								<optgroup label={capitalize(scope)}>
 									{#each ['', '_letters', '_names'] as proposal}
 										<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
 									{/each}
@@ -485,12 +491,23 @@
 							<p>
 								<i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button>
 							</p>
-							{#each ['asian'] as grp}
-								<p>Pct. {capitalize(grp)}: {pct(stats[`prop_${grp}`])}</p>
-							{/each}
-							<p>Income: {money(stats.income)}</p>
-							<p>Asian and LEP: {pct(stats['hhlang'])}</p>
-							<p>Pct. gov't benefits: {pct(stats['benefits'])}</p>
+							<table>
+								<tr>
+									<th />
+									<th>CVAP</th>
+									<th>Pop.</th>
+								</tr>
+								{#each groups as g}
+									<tr>
+										<td>{capitalize(g)}</td>
+										<td>{pct(stats['cvap19' + g])}</td>
+										<td>{pct(stats['pop20' + g])}</td>
+									</tr>
+								{/each}
+							</table>
+							<p class="table-footer">Income: {money(stats.income)}</p>
+							<p class="table-footer">Asian and LEP: {pct(stats['hhlang'])}</p>
+							<p class="table-footer">Pct. gov't benefits: {pct(stats['benefits'])}</p>
 						</div>
 					{/each}
 
@@ -502,72 +519,36 @@
 		</div>
 	</div>
 
-	<svg
-		viewBox={viewBox.join(' ')}
-		on:mousedown={() => (dragging = true)}
-		on:mouseup={() => (dragging = drawing = false)}
-		style="--font-size: {labelSize}px"
-	>
-		<g>
-			{#each data as f, i (id(f))}
-				<path
-					class="block-group"
-					class:head={draggedBgs[0] === id(f)}
-					d={path(f)}
-					fill={color(f, metric, period, showPluralities)}
-					on:click={() => changingLines && neighbor(i)}
-					on:contextmenu|preventDefault={() => console.log(f.properties)}
-					on:mousemove|preventDefault={() =>
-						drawing &&
-						dragging &&
-						(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)))}
-				/>
-			{/each}
-		</g>
-		<g class="meshes">
-			<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
-
-			{#if showComms}
-				<g in:fade out:fade>
-					{#each drawings as { outline }}
-						<path class="mesh-community" d={outline} />
-					{/each}
-				</g>
-			{/if}
-
-			{#if showPlans && !changingLines}
-				<g in:fade out:fade>
-					<path class="mesh-district" class:showPluralities d={(plan.startsWith('congress') ? (congressMeshes || {}) : plansMeshes)[plan]} />
-				</g>
-			{/if}
-
-			{#if changingLines}
-				<g in:fade out:fade>
-					<path
-						class="mesh-district"
-						d={path(mesh((a, b) => a.properties[plan] !== b.properties[plan], obj))}
-					/>
-				</g>
-			{/if}
-
-			{#if showPlans || changingLines}
-				<g class="labels" in:fade out:fade>
-					{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
-						{#if plan in p}
-							<text
-								{x}
-								{y}
-								class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
-								on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
-							>
-								{p[plan]}
-							</text>
-						{/if}
-					{/each}
-				</g>
-			{/if}
-		</g>
-	</svg>
+	<Svg
+		{viewBox}
+		{labelSize}
+		{draggedBgs}
+		{data}
+		{path}
+		{color}
+		{changingLines}
+		{neighbor}
+		{showPluralities}
+		{metric}
+		{period}
+		{tractVars}
+		{showComms}
+		{drawings}
+		{showPlans}
+		{plan}
+		{points}
+		{tractMesh}
+		{bgMesh}
+		{mesh}
+		{aggregates}
+		{obj}
+		{handleLabelClick}
+		{congressMeshes}
+		{plansMeshes}
+		{startDrag}
+		{endDrag}
+		{handleMouseMove}
+	/>
 
 	<div class="views">
 		<h3>Views</h3>
@@ -638,42 +619,6 @@
 		line-height: 1.25;
 	}
 
-	svg {
-		margin-left: var(--control-width);
-		display: block;
-		width: calc(100% - var(--control-width) - 150px);
-	}
-
-	svg path.head {
-		stroke: black;
-		stroke-width: 2;
-		stroke-dasharray: 4;
-	}
-
-	.meshes path {
-		fill: none;
-		stroke-linejoin: round;
-	}
-
-	.mesh-bg {
-		stroke: #fff;
-		stroke-width: 0.2;
-	}
-
-	.mesh-district {
-		stroke: black;
-		stroke-width: 1.1;
-	}
-
-	.mesh-community {
-		stroke: black;
-		stroke-width: 1.1;
-	}
-
-	.block-group {
-		transition-duration: 0.2s;
-	}
-
 	.legend {
 		margin: 23px 0;
 		display: grid;
@@ -723,23 +668,6 @@
 	.plurality-legend p {
 		right: 0;
 		word-break: break-all;
-	}
-
-	.labels {
-		--shadow: #ffff;
-	}
-
-	.labels text {
-		font-size: var(--font-size);
-		text-anchor: middle;
-		cursor: pointer;
-		text-shadow: 0px 1px 1px var(--shadow), 0px -1px 1px var(--shadow), 1px 0px 1px var(--shadow),
-			-1px 0px 1px var(--shadow), -1.5px 0px 2px var(--shadow), 1.5px 0px 2px var(--shadow),
-			0 1.5px 2px var(--shadow), 0 -1.5px 2px var(--shadow);
-	}
-
-	.labels text.chosen {
-		font-weight: 700;
 	}
 
 	table {

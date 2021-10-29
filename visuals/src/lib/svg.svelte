@@ -1,0 +1,156 @@
+<script>
+	import { fade } from 'svelte/transition';
+	import { id } from '$lib/utils';
+
+	export let viewBox,
+		labelSize,
+		draggedBgs,
+		data,
+		path,
+		color,
+		changingLines,
+		neighbor,
+		showPluralities,
+		metric,
+		period,
+		tractVars,
+		showComms,
+		drawings,
+		showPlans,
+		plan,
+		points,
+		tractMesh,
+		bgMesh,
+		mesh,
+		aggregates,
+		obj,
+		handleLabelClick,
+		congressMeshes,
+		plansMeshes,
+		startDrag,
+		endDrag,
+		handleMouseMove;
+</script>
+
+<svg
+	viewBox={viewBox.join(' ')}
+	on:mousedown={startDrag}
+	on:mouseup={endDrag}
+	style="--font-size: {labelSize || 11}px"
+>
+	<g>
+		{#each data as f, i (id(f))}
+			<path
+				class="block-group"
+				class:head={draggedBgs[0] === id(f)}
+				d={path(f)}
+				fill={color(f, metric, period, showPluralities)}
+				on:click={() => changingLines && neighbor(i)}
+				on:contextmenu|preventDefault={() => console.log(f.properties)}
+				on:mousemove|preventDefault={() => handleMouseMove(f)}
+			/>
+		{/each}
+	</g>
+	<g class="meshes">
+		<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
+
+		{#if showComms}
+			<g in:fade out:fade>
+				{#each drawings as { outline }}
+					<path class="mesh-community" d={outline} />
+				{/each}
+			</g>
+		{/if}
+
+		{#if showPlans && !changingLines}
+			<g in:fade out:fade>
+				<path
+					class="mesh-district"
+					class:showPluralities
+					d={(plan.startsWith('congress') ? congressMeshes || {} : plansMeshes)[plan]}
+				/>
+			</g>
+		{/if}
+
+		{#if changingLines}
+			<g in:fade out:fade>
+				<path
+					class="mesh-district"
+					d={path(mesh((a, b) => a.properties[plan] !== b.properties[plan], obj))}
+				/>
+			</g>
+		{/if}
+
+		{#if showPlans || changingLines}
+			<g class="labels" in:fade out:fade>
+				{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
+					{#if plan in p}
+						<text
+							{x}
+							{y}
+							class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
+							on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
+						>
+							{p[plan]}
+						</text>
+					{/if}
+				{/each}
+			</g>
+		{/if}
+	</g>
+</svg>
+
+<style>
+	svg {
+		margin-left: var(--control-width);
+		display: block;
+		width: calc(100% - var(--control-width) - 150px);
+	}
+
+	svg path.head {
+		stroke: black;
+		stroke-width: 2;
+		stroke-dasharray: 4;
+	}
+
+	.meshes path {
+		fill: none;
+		stroke-linejoin: round;
+	}
+
+	.mesh-bg {
+		stroke: #fff;
+		stroke-width: 0.2;
+	}
+
+	.mesh-district {
+		stroke: black;
+		stroke-width: 1.1;
+	}
+
+	.mesh-community {
+		stroke: black;
+		stroke-width: 1.1;
+	}
+
+	.block-group {
+		transition-duration: 0.2s;
+	}
+
+	.labels {
+		--shadow: #ffff;
+	}
+
+	.labels text {
+		font-size: var(--font-size);
+		text-anchor: middle;
+		cursor: pointer;
+		text-shadow: 0px 1px 1px var(--shadow), 0px -1px 1px var(--shadow), 1px 0px 1px var(--shadow),
+			-1px 0px 1px var(--shadow), -1.5px 0px 2px var(--shadow), 1.5px 0px 2px var(--shadow),
+			0 1.5px 2px var(--shadow), 0 -1.5px 2px var(--shadow);
+	}
+
+	.labels text.chosen {
+		font-weight: 700;
+	}
+</style>

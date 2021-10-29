@@ -13,6 +13,28 @@ visuals/static/points.topojson: visuals/static/output.topojson Makefile
 	-points inner \
 	-o $@
 
+output_parts: visuals/static/output_assembly.topojson visuals/static/output_no-congress.topojson visuals/static/output_senate.topojson visuals/static/output_congress.topojson
+
+visuals/static/output_assembly.topojson: visuals/static/output.topojson
+	mapshaper $< \
+	-target census,assembly,assembly_letters,assembly_names \
+	-o $@
+
+visuals/static/output_senate.topojson: visuals/static/output.topojson
+	mapshaper $< \
+	-target senate,senate_letters,senate_names \
+	-o $@
+
+visuals/static/output_no-congress.topojson: visuals/static/output.topojson
+	mapshaper $< \
+	-target census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names \
+	-o $@
+
+visuals/static/output_congress.topojson: visuals/static/output.topojson
+	mapshaper $< \
+	-target congress,congress_letters,congress_names \
+	-o $@
+
 visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
 	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
