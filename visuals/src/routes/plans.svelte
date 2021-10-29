@@ -1,6 +1,7 @@
 <script context="module">
+	import { base } from '$app/paths';
 	export async function load({ fetch }) {
-		const req = await fetch('/plans.topojson');
+		const req = await fetch(`${base}/plans.topojson`);
 		return { props: { topoData: await req.json() } };
 	}
 </script>

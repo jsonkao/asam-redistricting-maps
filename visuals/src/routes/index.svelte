@@ -252,7 +252,6 @@
 		let data1;
 		if (typeof input[0] === 'string') data1 = input.map((id) => data[idToIndex[id]].properties);
 		else data1 = input.map((f) => f.properties);
-		console.log(data1)
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
@@ -293,11 +292,12 @@
 	}
 
 	const views = {
-		Manhattan: [80, 430, 500, 440],
+		Chinatown: [80, 500, 300, 220],
+		'Chinatown Wide': [80, 430, 500, 440],
 		Brooklyn: [20, 550, 600, 600],
 		Full: [0, 0, 975, 1420]
 	};
-	let viewBox = views['Manhattan'];
+	let viewBox = views['Chinatown'];
 	let clientWidth;
 	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
 
@@ -395,6 +395,7 @@
 		{:else}
 			<div
 				class="color-legend"
+				class:pctasian={dynamicVars.includes(variable)}
 				style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 40px);"
 			>
 				{#each breaks as b, i}
@@ -404,13 +405,14 @@
 							: schemeBlues[i]};"
 					/>
 				{/each}
-				{#each breaks as b}
+				{#each breaks as b, i}
 					<p>
 						{breaks[breaks.length - 1] < 1
 							? pct(b, 0)
 							: breaks[breaks.length - 1] > 1000
 							? money(b)
 							: b}
+						{#if dynamicVars.includes(variable) && i === breaks.length - 1} Asian {/if}
 					</p>
 				{/each}
 			</div>
@@ -661,6 +663,16 @@
 		position: relative;
 		right: 13px;
 	}
+
+	.color-legend.pctasian p {
+		text-align: left;
+		right: 7px;
+	}
+
+	.color-legend.pctasian p:last-child {
+		white-space: pre;
+	}
+
 	.plurality-legend {
 		grid-template-columns: repeat(4, 40px);
 	}
