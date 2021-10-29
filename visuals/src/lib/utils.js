@@ -9,9 +9,9 @@ export const isNum = (x) => !isNaN(x) && x !== null;
 
 export const id = (f) => f.properties.GEOID;
 
-export const district = (f) => f.properties.DISTRICT;
-
 export const xor = (t, u) => (t && !u) || (u && !t);
+
+export const deviation = x => `${Math.abs(x)} ${x < 0 ? 'below' : 'above'}`;
 
 export const planTitle = (a) => {
 	const [plan, district] = a.split(',');

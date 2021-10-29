@@ -40,7 +40,7 @@ clean_plans_artifacts:
 
 plans/%.geojson: plans/%/*.shp
 	mapshaper "$^" \
-	-filter-fields DISTRICT \
+	-filter-fields DISTRICT,IDEAL_VALU \
 	-rename-fields $(notdir $(basename $@))=DISTRICT \
 	-o $@
 

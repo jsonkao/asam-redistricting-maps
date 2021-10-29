@@ -6,7 +6,7 @@ FIPSES = ["36047", "36061", "36081"]
 def compress_topojson():
     topo = json.load(sys.stdin)
     geoms = topo["objects"]["census"]["geometries"]
-    properties = list(geoms[0]["properties"].keys())
+    properties = [k for k in list(geoms[0]["properties"].keys()) if k != 'IDEAL_VALU']
 
     compress_names = False
     if compress_names:
@@ -57,9 +57,23 @@ def filter_crosswalk():
             print(line.strip())
 
 
+def get_ideal_values():
+    values = {}
+    for scope in ['assembly', 'senate', 'congress']:
+        for proposal in ['letters', 'names']:
+            plan = f'{scope}_{proposal}'
+            with open(f'plans/{plan}.geojson') as f:
+                next(f)
+                feature = next(f)
+            start = feature.find("IDEAL_VALU") + 12
+            end = feature.find("}", start)
+            values[plan] = int(feature[start:end])
+    print(values)
+
 command = sys.argv[1]
 {
     "-compress-topo": compress_topojson,
     "-filter-crosswalk": filter_crosswalk,
     "-filter-cvap": filter_cvap,
+    "-get-ideals": get_ideal_values,
 }[command]()

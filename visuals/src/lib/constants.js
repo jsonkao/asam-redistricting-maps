@@ -19,13 +19,23 @@ export const variablesLong = {
 	pop: 'Population by race'
 };
 
-export const seqColors = ['#fee5d9','#fcbba1','#fc9272','#fb6a4a','#de2d26'] || [
+export const seqColors = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26'] || [
 	'#ecf2f7',
 	'#cabed8',
 	'#aa8ab6',
 	'#8b5794',
 	'#6d2c71',
-	'#4b134c',
-]
+	'#4b134c'
+];
 
 export const schemeBlues = ['#eff3ff', '#c6dbef', '#9ecae1', '#6baed6', '#3182bd', '#08519c'];
+
+// Directly copied from output of `python3 preprocess.py -get-ideals`, then formatted
+export const idealValues = {
+	assembly_letters: 134675,
+	assembly_names: 134626,
+	senate_letters: 320655,
+	senate_names: 321190,
+	congress_letters: 776971,
+	congress_names: 776971
+};

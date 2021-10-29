@@ -17,7 +17,6 @@
 		const req = await fetch('/output.topojson');
 		const topoData = await req.json();
 		const obj = unpackAttributes(topoData.objects.census);
-		console.log(obj.geometries[0])
 		const data = feature(topoData, obj).features;
 
 		// Establish the static variables and the variables that change over time
@@ -80,12 +79,21 @@
 		money,
 		isNum,
 		id,
-		district,
 		xor,
 		planTitle,
-		planDesc
+		planDesc,
+		deviation
 	} from '$lib/utils';
-	import { colors, levels, groups, periods, variablesLong, seqColors, schemeBlues } from '$lib/constants';
+	import {
+		colors,
+		levels,
+		groups,
+		periods,
+		variablesLong,
+		seqColors,
+		schemeBlues,
+		idealValues
+	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 	export let topoData,
 		obj,
@@ -104,12 +112,19 @@
 	const bgMesh = path(mesh((a, b) => id(a) !== id(b)));
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
-	const getDistrict = (i) => data[i].properties.DISTRICT;
+	const getDistrict = (i) => data[i].properties[plan];
+
+	let lastDistrict;
 	function neighbor(i) {
 		const selfD = getDistrict(i);
 		const districts = new Set(neighbors[i].map(getDistrict).filter((d) => d !== selfD));
 		if (districts.size === 1) {
-			obj.geometries[i].properties.DISTRICT = districts.values().next().value;
+			const district = districts.values().next().value;
+			obj.geometries[i].properties[plan] = district;
+			obj = obj;
+			lastDistrict = district;
+		} else if (districts.has(lastDistrict)) {
+			obj.geometries[i].properties[plan] = lastDistrict;
 			obj = obj;
 		}
 	}
@@ -139,7 +154,7 @@
 			  metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
 			  (breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
-	let showPluralities = true;
+	let showPluralities = false;
 
 	function color({ properties: d }) {
 		if (d.ALAND === 0) return '#fff';
@@ -181,19 +196,8 @@
 		}
 	}
 
-	const districtTarget = 'G';
-	$: sums = [...groups, 'total'].reduce((acc, g) => {
-		if (`pop20_${g}` in data[0].properties) {
-			acc[g] = 0;
-			obj.geometries.forEach(({ properties: d }) => {
-				if (d.DISTRICT === districtTarget) acc[g] += d[`pop20_${g}`];
-			});
-		}
-		return acc;
-	}, {});
-	$: delta = sums.total - data[0].properties.IDEAL_VALU;
-
-	let showStats, showPlans, showComms, drawing, dragging;
+	let showPlans, showComms, drawing, dragging;
+	let changingLines;
 	let draggedBgs = [];
 	let drawings = [];
 	$: {
@@ -233,7 +237,8 @@
 		const output = {
 			income: wMean('income'),
 			hhlang: prop('hhlang', 'asian'),
-			benefits: prop('families', 'benefits')
+			benefits: prop('families', 'benefits'),
+			pop20_total: sum('pop20_total')
 		};
 		['pop20', 'cvap19'].forEach((m) => groups.forEach((g) => (output[m + g] = prop(m, g))));
 		return output;
@@ -259,7 +264,7 @@
 			...r,
 			stats: getStats(r.ids)
 		}));
-	};
+	}
 
 	const views = {
 		Manhattan: [80, 430, 500, 440],
@@ -285,9 +290,9 @@
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
 			const [aPlan, aDistrict] = aggregates[i].split(',');
-			if (aPlan === plan && !(aggregates[i] in stats)) {
+			if (aPlan === plan /* && !(aggregates[i] in stats) */) {
 				stats[aggregates[i]] = getStats(
-					data.filter(({ properties: d }) => aDistrict === '' + d[plan])
+					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[plan])
 				);
 			}
 		}
@@ -379,7 +384,19 @@
 		{/if}
 
 		<div class="stats">
-			<h3 on:click={() => {showPlans = !showPlans; showStats = false; showComms = false;}}>Plans ↓</h3>
+			<h3>
+				<button
+					on:click={() => {
+						showPlans = !showPlans;
+						showComms = false;
+					}}
+				>
+					Plans ↓
+				</button>
+				<button class="subbutton" on:click={() => (changingLines = !changingLines)}>
+					{changingLines ? 'Original' : 'Modify'}
+				</button>
+			</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
 					<div class="plan-selector">
@@ -414,7 +431,12 @@
 										</tr>
 									{/each}
 								</table>
-								<p>Income: {money(stats[a].income)}</p>
+								<p>
+									Income: {money(stats[a].income) +
+										(changingLines
+											? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
+											: '')}
+								</p>
 							</div>
 						{/if}
 					{/each}
@@ -423,19 +445,13 @@
 		</div>
 
 		<div class="stats">
-			<h3 on:click={() => {showStats = !showStats; showPlans = false; showComms = false;}}>Redistricting ↓</h3>
-			{#if showStats}
-				<div in:slide out:slide>
-					<p><i>Senate District {districtTarget}</i></p>
-					<p>Pct. Asian: {pct(sums['asian'] / sums.total, 2)}</p>
-					<p>{Math.abs(delta).toLocaleString()} people {delta >= 0 ? 'above' : 'below'}</p>
-				</div>
-			{/if}
-		</div>
-
-		<div class="stats">
 			<h3>
-				<button on:click={() => {showComms = !showComms; showStats = false; showPlans = false;}}>Communities ↓</button>
+				<button
+					on:click={() => {
+						showComms = !showComms;
+						showPlans = false;
+					}}>Communities ↓</button
+				>
 				<button on:click={() => (drawing = true)}>+</button>
 			</h3>
 			{#if showComms}
@@ -475,7 +491,7 @@
 					class:head={draggedBgs[0] === id(f)}
 					d={path(f)}
 					fill={color(f, metric, period, showPluralities)}
-					on:click={() => false && neighbor(i)}
+					on:click={() => changingLines && neighbor(i)}
 					on:contextmenu|preventDefault={() => console.log(f.properties)}
 					on:mousemove|preventDefault={() =>
 						drawing &&
@@ -490,40 +506,29 @@
 			{#if showComms}
 				<g in:fade out:fade>
 					{#each drawings as { outline }}
-						<path class="mesh-target" d={outline} />
+						<path class="mesh-community" d={outline} />
 					{/each}
 				</g>
 			{/if}
 
-			{#if showPlans}
+			{#if showPlans && !changingLines}
 				<g in:fade out:fade>
 					<path class="mesh-district" class:showPluralities d={plansMeshes[plan]} />
 				</g>
 			{/if}
 
-			{#if false}
+			{#if changingLines}
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
 						d={path(
-							mesh(
-								(a, b) => a.properties.DISTRICT !== b.properties.DISTRICT || id(a) === id(b),
-								obj
-							)
-						)}
-					/>
-					<path
-						class="mesh-target"
-						d={path(
-							mesh((a, b) =>
-								xor(district(a) === districtTarget, district(b) === districtTarget, obj)
-							)
+							mesh((a, b) => a.properties[plan] !== b.properties[plan] || id(a) === id(b), obj)
 						)}
 					/>
 				</g>
 			{/if}
 
-			{#if showPlans}
+			{#if showPlans || changingLines}
 				<g class="labels" in:fade out:fade>
 					{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
 						{#if plan in p}
@@ -595,7 +600,12 @@
 		font-size: 16px;
 		margin-bottom: 4px;
 		cursor: pointer;
-		width: 124px;
+		width: 138px;
+	}
+	.stats h3 button.subbutton {
+		font-size: 14px;
+		font-weight: 300;
+		text-decoration: underline;
 	}
 
 	.stats p {
@@ -629,7 +639,7 @@
 		stroke-width: 1.1;
 	}
 
-	.mesh-target {
+	.mesh-community {
 		stroke: black;
 		stroke-width: 1.1;
 	}
