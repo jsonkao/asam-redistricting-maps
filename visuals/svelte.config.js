@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static';
+import static_adapter from '@sveltejs/adapter-static';
 
 const dev = process.env.NODE_ENV === 'development';
 
@@ -7,7 +7,7 @@ const config = {
 	kit: {
 		// hydrate the <div id="svelte"> element in src/app.html
 		target: '#svelte',
-		// adapter: adapter({ pages: '../docs', assets: '../docs' }),
+		adapter: static_adapter(),
 		paths: {
 			base: dev ? '' : '/asam-redistricting-maps',
 		}

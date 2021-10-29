@@ -1,7 +1,16 @@
+<script context="module">
+	export async function load({ fetch }) {
+		const req = await fetch('/plans.topojson');
+		return { props: { topoData: await req.json() } };
+	}
+</script>
+
 <script>
 	import { feature } from 'topojson-client';
 	import { onMount } from 'svelte';
-import { planDesc } from '$lib/utils';
+	import { planDesc } from '$lib/utils';
+
+	export let topoData;
 
 	let map, loaded;
 
@@ -25,8 +34,6 @@ import { planDesc } from '$lib/utils';
 		});
 
 		map.on('load', async () => {
-			const req = await fetch('/plans.topojson');
-			const topoData = await req.json();
 			plans.forEach((k) => {
 				const data = feature(topoData, topoData.objects[k]);
 				map.addSource(k, {
@@ -53,10 +60,7 @@ import { planDesc } from '$lib/utils';
 					}
 				});
 				map.on('click', k + '_fill', (e) => {
-					new mapboxgl.Popup()
-						.setLngLat(e.lngLat)
-						.setHTML(e.features[0].properties[k])
-						.addTo(map);
+					new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(e.features[0].properties[k]).addTo(map);
 				});
 			});
 			loaded = true;
@@ -71,7 +75,7 @@ import { planDesc } from '$lib/utils';
 				const visibility = p === plan ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
-				console.log(p, visibility)
+				console.log(p, visibility);
 			});
 		}
 	}

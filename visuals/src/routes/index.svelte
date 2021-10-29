@@ -1,10 +1,11 @@
 <script context="module">
 	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
-	import { unpackAttributes } from '$lib/utils';
+	import { unpackAttributes, D } from '$lib/utils';
 	import { geoPath } from 'd3-geo';
+	import { base } from '$app/paths';
 
 	async function getPoints(fetch) {
-		const req = await fetch('/points.topojson');
+		const req = await fetch(`${base}/points.topojson`);
 		const topoData = await req.json();
 		return feature(topoData, topoData.objects.layer).features;
 	}
@@ -14,7 +15,7 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
-		const req = await fetch('/output.topojson');
+		const req = await fetch(`${base}/output_no-congress.topojson`);
 		const topoData = await req.json();
 		const obj = unpackAttributes(topoData.objects.census);
 		const data = feature(topoData, obj).features;
@@ -43,7 +44,6 @@
 		// Retrieve boundaries data
 		const path = geoPath();
 		const plansMeshes = {};
-		const D = (x) => Object.values(x.properties)[0];
 		Object.keys(topoData.objects).forEach((k) => {
 			if (k !== 'census')
 				plansMeshes[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
@@ -95,6 +95,7 @@
 		idealValues
 	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
+
 	export let topoData,
 		obj,
 		neighbors,
@@ -164,16 +165,17 @@
 
 		if (pluralityVars.includes(metric)) {
 			const p = (g) => d[`${metric}_${g}`];
-			if (p(periods[0]) === null) return '#ddd';
+			if (p(periods[0]) === null) return '#eee';
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
-			return schemeBlues[periods.length][periods.indexOf(pluralities[0])];
+			return schemeBlues[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
-			if (!isNum(getValue(d))) return '#ddd';
+			if (!d.ALAND) return '#fff';
+			if (!isNum(getValue(d))) return '#eee';
 			if (total <= 10) return '#fff';
 			for (let i = 1; i < breaks.length; i++) {
-				if (getValue(d) < breaks[i]) return schemeBlues[breaks.length][i];
+				if (getValue(d) < breaks[i]) return schemeBlues[i];
 			}
-			return schemeBlues[breaks.length][breaks.length - 1];
+			return schemeBlues[breaks.length - 1];
 		} else {
 			if (total <= 10) return '#fff';
 			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
@@ -229,6 +231,22 @@
 		}
 	}
 
+	let congressMeshes;
+	$: {
+		if (congressMeshes === undefined && plan.startsWith('congress')) {
+			loadCongressMeshes();
+		}
+	}
+
+	async function loadCongressMeshes() {
+		const req = await fetch(`${base}/output_congress.topojson`);
+		const topoData = await req.json();
+		congressMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
+			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)))
+			return acc;
+		}, {});
+	}
+
 	function getStats(input) {
 		let data1;
 		if (typeof input[0] === 'string') data1 = input.map((id) => data[idToIndex[id]].properties);
@@ -249,7 +267,7 @@
 	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
 
 	async function save() {
-		await fetch(`/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
+		await fetch(`${base}/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
 	}
 
 	let fetchedDrawings;
@@ -261,7 +279,7 @@
 	}
 
 	async function fetchDrawings() {
-		const req = await fetch(`/data.json`);
+		const req = await fetch(`${base}/data.json`);
 		drawings = (await req.json()).map((r) => ({
 			...r,
 			stats: getStats(r.ids)
@@ -304,6 +322,13 @@
 		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);
 		else aggregates = [...aggregates, id];
 	}
+
+	const startDrag = () => dragging = true;
+	const endDrag = () => (dragging = drawing = false);
+	const handleMouseMove = (f) =>
+						drawing &&
+						dragging &&
+						(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)))
 </script>
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
@@ -355,7 +380,7 @@
 		{:else if pluralityVars.includes(metric)}
 			<div class="color-legend plurality-legend">
 				{#each periods as p, i}
-					<div style="background-color: {schemeBlues[periods.length][i]}" />
+					<div style="background-color: {schemeBlues[i]}" />
 				{/each}
 				{#each periods as p}
 					<p>{p.replace('_', '-')}</p>
@@ -370,7 +395,7 @@
 					<div
 						style="background-color: {dynamicVars.includes(variable)
 							? seqColors[i]
-							: schemeBlues[breaks.length][i]};"
+							: schemeBlues[i]};"
 					/>
 				{/each}
 				{#each breaks as b}
@@ -403,16 +428,13 @@
 				<div in:slide out:slide>
 					<div class="plan-selector">
 						<select bind:value={plan}>
-							<optgroup label="Current districts">
-								{#each ['assembly', 'senate', 'congress'] as p}
-									<option value={p}>{planDesc(p)}</option>
-								{/each}
-							</optgroup>
-							<optgroup label="Proposed districts">
-								{#each ['assembly_letters', 'assembly_names', 'senate_letters', 'senate_names', 'congress_letters', 'congress_names'] as p}
-									<option value={p}>{planDesc(p)}</option>
-								{/each}
-							</optgroup>
+							{#each ['assembly', 'senate', 'congress'] as scope}
+								<optgroup label="{capitalize(scope)}">
+									{#each ['', '_letters', '_names'] as proposal}
+										<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
+									{/each}
+								</optgroup>
+							{/each}
 						</select>
 					</div>
 					{#each aggregates as a}
@@ -435,7 +457,7 @@
 								</table>
 								<p class="table-footer">
 									Income: {money(stats[a].income) +
-										(changingLines
+										(changingLines && plan in idealValues
 											? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
 											: '')}
 								</p>
@@ -457,7 +479,7 @@
 				<button on:click={() => (drawing = true)}>+</button>
 			</h3>
 			{#if showComms}
-				<div in:slide out:slide>
+				<div class="community" in:slide out:slide>
 					{#each drawings as { name, stats }, i}
 						<div>
 							<p>
@@ -515,7 +537,7 @@
 
 			{#if showPlans && !changingLines}
 				<g in:fade out:fade>
-					<path class="mesh-district" class:showPluralities d={plansMeshes[plan]} />
+					<path class="mesh-district" class:showPluralities d={(plan.startsWith('congress') ? (congressMeshes || {}) : plansMeshes)[plan]} />
 				</g>
 			{/if}
 
@@ -523,9 +545,7 @@
 				<g in:fade out:fade>
 					<path
 						class="mesh-district"
-						d={path(
-							mesh((a, b) => a.properties[plan] !== b.properties[plan] || id(a) === id(b), obj)
-						)}
+						d={path(mesh((a, b) => a.properties[plan] !== b.properties[plan], obj))}
 					/>
 				</g>
 			{/if}
@@ -596,6 +616,10 @@
 
 	.stats div {
 		margin-bottom: 20px;
+	}
+
+	.stats div.community {
+		margin-bottom: 10px;
 	}
 
 	.stats h3 {
