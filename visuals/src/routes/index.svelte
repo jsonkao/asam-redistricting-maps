@@ -94,6 +94,8 @@
 	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 	import Svg from '$lib/svg.svelte';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/env';
 
 	export let topoData,
 		obj,
@@ -109,8 +111,14 @@
 		idToIndex;
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
-	const bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
+	let bgMesh;
+	let viewCutoff = 2765; // manually copied from make/mapshaper output
+
+	onMount(() => {
+		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
+		viewCutoff = 6000;
+	})
 
 	const getDistrict = (i) => data[i].properties[plan];
 
@@ -295,7 +303,7 @@
 		Brooklyn: [20, 550, 600, 600],
 		Full: [0, 0, 975, 1420]
 	};
-	let viewBox = views['Chinatown'];
+	let viewBox = views['Brooklyn'];
 	let clientWidth;
 	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
 
@@ -334,6 +342,8 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 </script>
+
+{#if !browser} <h1>hi</h1> {/if}
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
 	<div class="controls">
@@ -548,6 +558,7 @@
 		{startDrag}
 		{endDrag}
 		{handleMouseMove}
+		{viewCutoff}
 	/>
 
 	<div class="views">

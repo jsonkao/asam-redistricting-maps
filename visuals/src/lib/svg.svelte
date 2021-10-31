@@ -29,7 +29,8 @@
 		plansMeshes,
 		startDrag,
 		endDrag,
-		handleMouseMove;
+		handleMouseMove,
+		viewCutoff;
 </script>
 
 <svg
@@ -38,21 +39,24 @@
 	on:mouseup={endDrag}
 	style="--font-size: {labelSize || 11}px"
 >
-	<g>
+	<g class="block-groups">
 		{#each data as f, i (id(f))}
-			<path
-				class="block-group"
-				class:head={draggedBgs[0] === id(f)}
-				d={path(f)}
-				fill={color(f, metric, period, showPluralities)}
-				on:click={() => changingLines && neighbor(i)}
-				on:contextmenu|preventDefault={() => console.log(f.properties)}
-				on:mousemove|preventDefault={() => handleMouseMove(f)}
-			/>
+			{#if i < viewCutoff}
+				<path
+					class:head={draggedBgs[0] === id(f)}
+					d={path(f)}
+					fill={color(f, metric, period, showPluralities)}
+					on:click={() => changingLines && neighbor(i)}
+					on:contextmenu|preventDefault={() => console.log(f.properties)}
+					on:mousemove|preventDefault={() => handleMouseMove(f)}
+				/>
+			{/if}
 		{/each}
 	</g>
 	<g class="meshes">
-		<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
+		{#if bgMesh}
+			<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
+		{/if}
 
 		{#if showComms}
 			<g in:fade out:fade>
@@ -133,7 +137,7 @@
 		stroke-width: 1.1;
 	}
 
-	.block-group {
+	.block-groups path {
 		transition-duration: 0.2s;
 	}
 

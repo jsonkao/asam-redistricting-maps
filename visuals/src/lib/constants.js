@@ -4,6 +4,7 @@ export const colors = {
 	asian: '#ff0000',
 	white: '#73B2FF'
 }; // from Racial Dot Map, see https://github.com/unorthodox123/RacialDotMap/blob/master/dotmap.pde#L168
+
 export const levels = ['44', '99', 'ee'];
 export const groups = ['asian', 'black', 'hispanic', 'white'];
 export const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];

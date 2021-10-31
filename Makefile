@@ -1,6 +1,8 @@
 PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
+BROOKLYN_VIEWRECT = 20,550,620,1150
+
 #
 # PLANS for web
 #
@@ -25,10 +27,15 @@ visuals/static/output_senate.topojson: visuals/static/output.topojson
 	-target senate,senate_letters,senate_names \
 	-o $@
 
-visuals/static/output_no-congress.topojson: visuals/static/output.topojson
+visuals/static/output_no-congress.topojson: visuals/static/output.topojson Makefile
 	mapshaper $< \
-	-target census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names \
-	-o $@
+	-rectangle bbox=$(BROOKLYN_VIEWRECT) name=rect \
+	-each view=1 \
+	-target census \
+	-join rect \
+	-sort "fields ? 2 : (view || 0)" descending \
+	-filter-fields d,fields \
+	-o $@ target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
 
 visuals/static/output_congress.topojson: visuals/static/output.topojson
 	mapshaper $< \
