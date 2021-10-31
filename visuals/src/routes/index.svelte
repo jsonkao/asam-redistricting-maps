@@ -1,12 +1,11 @@
 <script context="module">
 	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
-	import { unpackAttributes, D } from '$lib/utils';
+	import { unpackAttributes, reduceCoordinatePrecision, D } from '$lib/utils';
 	import { geoPath } from 'd3-geo';
 	import { base } from '$app/paths';
 
 	async function getPoints(fetch) {
-		const req = await fetch(`${base}/points.topojson`);
-		const topoData = await req.json();
+		const topoData = await (await fetch(`${base}/points.topojson`)).json();
 		return feature(topoData, topoData.objects.layer).features;
 	}
 
@@ -15,10 +14,9 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
-		const req = await fetch(`${base}/output_no-congress.topojson`);
-		const topoData = await req.json();
+		const topoData = await (await fetch(`${base}/output_no-congress.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
-		const data = feature(topoData, obj).features;
+		const data = feature(topoData, obj).features.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['cvap', 'pop'];
@@ -70,7 +68,7 @@
 
 <script>
 	import ckmeans from 'ckmeans';
-	import { slide, fade } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
 	import * as concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
 	import {
@@ -111,7 +109,7 @@
 		idToIndex;
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
-	const bgMesh = path(mesh((a, b) => id(a) !== id(b)));
+	const bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
 	const getDistrict = (i) => data[i].properties[plan];

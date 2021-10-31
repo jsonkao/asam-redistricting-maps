@@ -13,12 +13,14 @@ export const id = (f) => f.properties.GEOID;
 
 export const xor = (t, u) => (t && !u) || (u && !t);
 
-export const deviation = x => `${Math.abs(x)} ${x < 0 ? 'below' : 'above'}`;
+export const deviation = (x) => `${Math.abs(x)} ${x < 0 ? 'below' : 'above'}`;
 
 export const planTitle = (a) => {
 	const [plan, district] = a.split(',');
-	const words = plan.split('_')
-	return (words.length === 1 ? '' : `“${capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + district;
+	const words = plan.split('_');
+	return (
+		(words.length === 1 ? '' : `“${capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + district
+	);
 };
 
 export const planDesc = (plan) => {
@@ -31,7 +33,7 @@ export function unpackAttributes(obj) {
 	const attributes = geoms[0].properties.fields;
 	for (let i = 0; i < geoms.length; i++) {
 		const table = {};
-		geoms[i].properties = geoms[i].properties.d.split(',')
+		geoms[i].properties = geoms[i].properties.d.split(',');
 		for (let j = 0; j < attributes.length; j++) {
 			let v = geoms[i].properties[j];
 			if (v === '') v = null;
@@ -41,4 +43,37 @@ export function unpackAttributes(obj) {
 		geoms[i].properties = table;
 	}
 	return obj;
+}
+
+// Works for geometries MultiPolygons, Polygons, and MultiLineStrings and features
+// with those geometries
+export function reduceCoordinatePrecision(d) {
+	let g, f;
+	if (d.type === 'Feature') {
+		g = d.geometry;
+		f = d;
+	} else if (['MultiPolygon', 'Polygon', 'MultiLineString'].includes(d.type)) {
+		g = d;
+	}
+
+	const coords = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
+	for (let p = 0; p < coords.length; p++) {
+		const polygon = coords[p];
+		for (let l = 0; l < polygon.length; l++) {
+			const ring = polygon[l];
+			for (let n = 0; n < ring.length; n++) {
+				const position = ring[n];
+				for (let i = 0; i < position.length; i++) {
+					const number = position[i];
+					coords[p][l][n][i] = +number.toFixed(1);
+				}
+			}
+		}
+	}
+
+	const geometry = {
+		type: g.type,
+		coordinates: g.type === 'MultiPolygon' ? coords : coords[0]
+	};
+	return f ? { ...f, geometry } : geometry;
 }
