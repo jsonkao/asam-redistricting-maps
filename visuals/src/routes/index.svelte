@@ -14,12 +14,12 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
-		const topoData = await (await fetch(`${base}/output_no-congress.topojson`)).json();
+		const topoData = await (await fetch(`${base}/output_census.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
 		const data = feature(topoData, obj).features.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
-		const dynamicVars = ['cvap', 'pop'];
+		const dynamicVars = ['pop', 'cvap'];
 		const staticVars = [
 			...data.reduce((acc, val) => {
 				const fields = Object.keys(val.properties)
@@ -39,14 +39,6 @@
 			return acc;
 		}, {});
 
-		// Retrieve boundaries data
-		const path = geoPath();
-		const plansMeshes = {};
-		Object.keys(topoData.objects).forEach((k) => {
-			if (k !== 'census')
-				plansMeshes[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
-		});
-
 		return {
 			props: {
 				topoData,
@@ -57,8 +49,7 @@
 				staticVars,
 				idToIndex,
 				points: await getPoints(fetch),
-				path,
-				plansMeshes,
+				path: geoPath(),
 				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'] // Aside from race
 			}
@@ -95,7 +86,6 @@
 	import { polygonCentroid } from 'd3-polygon';
 	import Svg from '$lib/svg.svelte';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/env';
 
 	export let topoData,
 		obj,
@@ -106,19 +96,27 @@
 		staticVars,
 		tractVars,
 		pluralityVars,
-		plansMeshes,
 		path,
 		idToIndex;
+
+	let plansMeshes;
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 	let bgMesh;
 	let viewCutoff = 2765; // manually copied from make/mapshaper output
 
-	onMount(() => {
+	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		viewCutoff = 6000;
-	})
+
+		// Retrieve boundaries data
+		const topoData = await (await fetch(`${base}/output_no-congress.topojson`)).json();
+		plansMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
+			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
+			return acc;
+		}, {});
+	});
 
 	const getDistrict = (i) => data[i].properties[plan];
 
@@ -144,8 +142,6 @@
 		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
 
 	const breaksCache = {
-		// pop: [0, 0.08, 0.2, 0.37, 0.57],
-		// cvap: [0, 0.08, 0.2, 0.37, 0.57],
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
 		cvap: [0, 0.1, 0.2, 0.4, 0.6]
 	};
@@ -309,14 +305,7 @@
 
 	let plan = 'assembly';
 
-	let aggregates = []; /*[
-		'assembly,65',
-		'assembly_letters,BM',
-		'assembly_names,STHMNHTN',
-		'senate,26',
-		'senate_letters,BH',
-		'senate_names,DWNTNBRKLN'
-	];*/
+	let aggregates = [];
 	let stats = {};
 
 	$: {
@@ -342,8 +331,6 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 </script>
-
-{#if !browser} <h1>hi</h1> {/if}
 
 <div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
 	<div class="controls">
@@ -415,12 +402,11 @@
 				{/each}
 				{#each breaks as b, i}
 					<p>
-						{breaks[breaks.length - 1] < 1
+						{(breaks[breaks.length - 1] < 1
 							? pct(b, 0)
 							: breaks[breaks.length - 1] > 1000
 							? money(b)
-							: b}
-						{#if dynamicVars.includes(variable) && i === breaks.length - 1} Asian {/if}
+							: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? ' Asian' : '')}
 					</p>
 				{/each}
 			</div>

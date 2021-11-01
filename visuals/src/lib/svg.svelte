@@ -71,7 +71,7 @@
 				<path
 					class="mesh-district"
 					class:showPluralities
-					d={(plan.startsWith('congress') ? congressMeshes || {} : plansMeshes)[plan]}
+					d={((plan.startsWith('congress') ? congressMeshes : plansMeshes) || {})[plan]}
 				/>
 			</g>
 		{/if}

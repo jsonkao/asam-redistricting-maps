@@ -15,19 +15,13 @@ visuals/static/points.topojson: visuals/static/output.topojson Makefile
 	-points inner \
 	-o $@
 
-output_parts: visuals/static/output_assembly.topojson visuals/static/output_no-congress.topojson visuals/static/output_senate.topojson visuals/static/output_congress.topojson
+output_parts: visuals/static/output_no-congress.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 
-visuals/static/output_assembly.topojson: visuals/static/output.topojson
+visuals/static/output_no-congress.topojson: visuals/static/output.topojson
 	mapshaper $< \
-	-target census,assembly,assembly_letters,assembly_names \
-	-o $@
+	-o $@ target=assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
 
-visuals/static/output_senate.topojson: visuals/static/output.topojson
-	mapshaper $< \
-	-target senate,senate_letters,senate_names \
-	-o $@
-
-visuals/static/output_no-congress.topojson: visuals/static/output.topojson Makefile
+visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 	mapshaper $< \
 	-rectangle bbox=$(BROOKLYN_VIEWRECT) name=rect \
 	-each view=1 \
@@ -35,7 +29,7 @@ visuals/static/output_no-congress.topojson: visuals/static/output.topojson Makef
 	-join rect \
 	-sort "fields ? 2 : (view || 0)" descending \
 	-filter-fields d,fields \
-	-o $@ target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
+	-o $@ target=census
 
 visuals/static/output_congress.topojson: visuals/static/output.topojson
 	mapshaper $< \
