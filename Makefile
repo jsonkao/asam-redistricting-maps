@@ -15,12 +15,12 @@ visuals/static/points.topojson: visuals/static/output.topojson Makefile
 	-points inner \
 	-o $@
 
-output_parts: visuals/static/output_no-congress.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
+output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 
-visuals/static/output_no-congress.topojson: visuals/static/output.topojson
-	mapshaper $< \
-	-o $@ target=assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
+visuals/static/output_assembly_senate.topojson: visuals/static/output.topojson
+	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
 
+# Prioritizes BGs in initial viewbox
 visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 	mapshaper $< \
 	-rectangle bbox=$(BROOKLYN_VIEWRECT) name=rect \
@@ -32,9 +32,7 @@ visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 	-o $@ target=census
 
 visuals/static/output_congress.topojson: visuals/static/output.topojson
-	mapshaper $< \
-	-target congress,congress_letters,congress_names \
-	-o $@
+	mapshaper $< -o $@ target=congress,congress_letters,congress_names
 
 visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
 	mapshaper -i $^ combine-files \

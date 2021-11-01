@@ -1,13 +1,7 @@
 <script context="module">
 	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
 	import { unpackAttributes, reduceCoordinatePrecision, D } from '$lib/utils';
-	import { geoPath } from 'd3-geo';
 	import { base } from '$app/paths';
-
-	async function getPoints(fetch) {
-		const topoData = await (await fetch(`${base}/points.topojson`)).json();
-		return feature(topoData, topoData.objects.layer).features;
-	}
 
 	/**
 	 * A function that computes all constant data
@@ -48,8 +42,6 @@
 				dynamicVars,
 				staticVars,
 				idToIndex,
-				points: await getPoints(fetch),
-				path: geoPath(),
 				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'] // Aside from race
 			}
@@ -60,8 +52,9 @@
 <script>
 	import ckmeans from 'ckmeans';
 	import { slide } from 'svelte/transition';
-	import * as concaveman from 'concaveman';
+	import concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
+	import { geoPath } from 'd3-geo';
 	import {
 		pct,
 		capitalize,
@@ -91,31 +84,33 @@
 		obj,
 		neighbors,
 		data,
-		points,
 		dynamicVars,
 		staticVars,
 		tractVars,
 		pluralityVars,
-		path,
 		idToIndex;
 
-	let plansMeshes;
+	const path = geoPath();
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
-	let bgMesh;
 	let viewCutoff = 2765; // manually copied from make/mapshaper output
+	let plansMeshes, bgMesh, points;
 
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		viewCutoff = 6000;
 
 		// Retrieve boundaries data
-		const topoData = await (await fetch(`${base}/output_no-congress.topojson`)).json();
+		const topoData = await (await fetch(`${base}/output_assembly_senate.topojson`)).json();
 		plansMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
 			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
 			return acc;
 		}, {});
+
+		// Retrieve label positions
+		const pointsData = await (await fetch(`${base}/points.topojson`)).json();
+		points = feature(pointsData, pointsData.objects.layer).features;
 	});
 
 	const getDistrict = (i) => data[i].properties[plan];
