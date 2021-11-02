@@ -1,6 +1,6 @@
 <script context="module">
 	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
-	import { unpackAttributes, reduceCoordinatePrecision, D } from '$lib/utils';
+	import { unpackAttributes, reduceCoordinatePrecision } from '$lib/utils';
 	import { base } from '$app/paths';
 
 	/**
@@ -55,15 +55,11 @@
 	import concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
 	import {
-		pct,
 		capitalize,
-		money,
 		isNum,
 		id,
 		xor,
-		planTitle,
 		planDesc,
-		deviation,
 		path,
 		getPoints,
 		getPlansMeshes,
@@ -84,6 +80,7 @@
 	import { onMount } from 'svelte';
 	import Svg from '$lib/svg.svelte';
 	import Legend from '$lib/legend.svelte';
+	import Tables from '$lib/tables.svelte';
 
 	export let topoData,
 		obj,
@@ -247,7 +244,7 @@
 	let fetchedDrawings;
 	$: {
 		if (showComms && !fetchedDrawings) {
-			drawings = fetchDrawings();
+			fetchDrawings();
 			fetchedDrawings = true;
 		}
 	}
@@ -348,10 +345,8 @@
 					on:click={() => {
 						showPlans = !showPlans;
 						showComms = false;
-					}}
+					}}>Plans ↓</button
 				>
-					Plans ↓
-				</button>
 				<button class="subbutton" on:click={() => (changingLines = !changingLines)}>
 					{changingLines ? 'Original' : 'Modify'}
 				</button>
@@ -369,33 +364,15 @@
 							{/each}
 						</select>
 					</div>
-					{#each aggregates as a}
-						{#if a.split(',')[0].split('_')[0] === plan.split('_')[0]}
-							<div class="district-aggregate">
-								<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
-								<table>
-									<tr>
-										<th />
-										<th>CVAP</th>
-										<th>Pop.</th>
-									</tr>
-									{#each groups as g}
-										<tr>
-											<td>{capitalize(g)}</td>
-											<td>{pct(stats[a]['cvap19' + g])}</td>
-											<td>{pct(stats[a]['pop20' + g])}</td>
-										</tr>
-									{/each}
-								</table>
-								<p class="table-footer">
-									Income: {money(stats[a].income) +
-										(changingLines && plan in idealValues
-											? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
-											: '')}
-								</p>
-							</div>
-						{/if}
-					{/each}
+					<Tables
+						{aggregates}
+						{handleLabelClick}
+						{plan}
+						{stats}
+						{groups}
+						{changingLines}
+						{idealValues}
+					/>
 				</div>
 			{/if}
 		</div>
@@ -412,31 +389,7 @@
 			</h3>
 			{#if showComms}
 				<div class="community" in:slide out:slide>
-					{#each drawings as { name, stats }, i}
-						<div>
-							<p>
-								<i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button>
-							</p>
-							<table>
-								<tr>
-									<th />
-									<th>CVAP</th>
-									<th>Pop.</th>
-								</tr>
-								{#each groups as g}
-									<tr>
-										<td>{capitalize(g)}</td>
-										<td>{pct(stats['cvap19' + g])}</td>
-										<td>{pct(stats['pop20' + g])}</td>
-									</tr>
-								{/each}
-							</table>
-							<p class="table-footer">Income: {money(stats.income)}</p>
-							<p class="table-footer">Asian and LEP: {pct(stats['hhlang'])}</p>
-							<p class="table-footer">Pct. gov't benefits: {pct(stats['benefits'])}</p>
-						</div>
-					{/each}
-
+					<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
 					<button on:click={save} style="font-size: 13px;">
 						<b>[SAVE]</b>
 					</button>
@@ -542,58 +495,11 @@
 		text-decoration: underline;
 	}
 
-	.stats p {
-		line-height: 1.25;
-	}
-
 	.plurality-toggle {
 		text-decoration: underline;
 		margin-left: 7px;
 		font-size: 14px;
 		line-height: 1;
-	}
-
-	table {
-		border-collapse: collapse;
-		margin: 4px 0;
-		min-width: 200px;
-	}
-
-	table th {
-		text-align: left;
-		border-spacing: 0;
-		font-weight: 600;
-	}
-
-	table td,
-	th {
-		line-height: 1;
-		margin: 0;
-		font-size: 15px;
-	}
-
-	.table-footer {
-		font-size: 15px;
-	}
-
-	table td {
-		padding: 3px 0;
-	}
-
-	tr td:not(:last-child) {
-		padding-right: 9px;
-	}
-
-	table tr {
-		border-bottom: 1px solid #ddd;
-	}
-
-	.stats .district-aggregate {
-		margin-bottom: 11px;
-	}
-
-	.district-aggregate p:first-child {
-		cursor: pointer;
 	}
 
 	.stats .plan-selector {
