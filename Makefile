@@ -7,13 +7,17 @@ BROOKLYN_VIEWRECT = 20,550,620,1150
 # PLANS for web
 #
 
-visuals/static/points.topojson: visuals/static/output.topojson Makefile
+visuals/static/points.json: visuals/static/output.topojson Makefile
 	mapshaper $< \
 	-target 1 \
 	-drop \
 	-merge-layers force target=* \
 	-points inner \
-	-o $@
+	-each "this.coordinates = congress_letters === 'J' ? [65, 715] : this.coordinates" \
+	-o format=geojson ndjson - \
+	| ndjson-map '[...d.geometry.coordinates.map(Math.round), ...Object.entries(d.properties)[0]]' \
+	| ndjson-reduce \
+	> $@
 
 output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 

@@ -102,8 +102,10 @@
 		viewCutoff = 6000;
 
 		// Retrieve more data
-		plansMeshes = await getPlansMeshes();
-		points = await getPoints();
+		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
+		console.log(promises);
+		plansMeshes = promises[0];
+		points = promises[1];
 	});
 
 	let lastDistrict;

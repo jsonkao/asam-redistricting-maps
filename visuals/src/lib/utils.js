@@ -93,8 +93,15 @@ export async function getPlansMeshes() {
 }
 
 export async function getPoints() {
-	const topoData = await (await fetch(`${base}/points.topojson`)).json();
-	return feature(topoData, topoData.objects.layer).features;
+	const json = await (await fetch(`${base}/points.json`)).json();
+	return json.map(([x, y, plan, district]) => ({
+		type: 'Feature',
+		geometry: {
+			type: 'Point',
+			coordinates: [x, y]
+		},
+		properties: { [plan]: district }
+	}));
 }
 
 export async function getCongressMeshes() {
