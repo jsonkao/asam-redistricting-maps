@@ -54,7 +54,6 @@
 	import { slide } from 'svelte/transition';
 	import concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
-	import { geoPath } from 'd3-geo';
 	import {
 		pct,
 		capitalize,
@@ -64,7 +63,11 @@
 		xor,
 		planTitle,
 		planDesc,
-		deviation
+		deviation,
+		path,
+		getPoints,
+		getPlansMeshes,
+		getCongressMeshes
 	} from '$lib/utils';
 	import {
 		colors,
@@ -74,11 +77,13 @@
 		variablesLong,
 		seqColors,
 		schemeBlues,
+		views,
 		idealValues
 	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
-	import Svg from '$lib/svg.svelte';
 	import { onMount } from 'svelte';
+	import Svg from '$lib/svg.svelte';
+	import Legend from '$lib/legend.svelte';
 
 	export let topoData,
 		obj,
@@ -90,8 +95,6 @@
 		pluralityVars,
 		idToIndex;
 
-	const path = geoPath();
-
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 	let viewCutoff = 2765; // manually copied from make/mapshaper output
@@ -101,33 +104,21 @@
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		viewCutoff = 6000;
 
-		// Retrieve boundaries data
-		const topoData = await (await fetch(`${base}/output_assembly_senate.topojson`)).json();
-		plansMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
-			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
-			return acc;
-		}, {});
-
-		// Retrieve label positions
-		const pointsData = await (await fetch(`${base}/points.topojson`)).json();
-		points = feature(pointsData, pointsData.objects.layer).features;
+		// Retrieve more data
+		plansMeshes = await getPlansMeshes();
+		points = await getPoints();
 	});
 
-	const getDistrict = (i) => data[i].properties[plan];
-
 	let lastDistrict;
+	const getDistrict = (i) => data[i].properties[plan];
 	function neighbor(i) {
 		const selfD = getDistrict(i);
 		const districts = new Set(neighbors[i].map(getDistrict).filter((d) => d !== selfD));
-		if (districts.size === 1) {
-			const district = districts.values().next().value;
-			obj.geometries[i].properties[plan] = district;
-			obj = obj;
-			lastDistrict = district;
-		} else if (districts.has(lastDistrict)) {
-			obj.geometries[i].properties[plan] = lastDistrict;
-			obj = obj;
-		}
+		if (districts.size === 1)
+			obj.geometries[i].properties[plan] = lastDistrict = districts.values().next().value;
+		else if (districts.has(lastDistrict)) obj.geometries[i].properties[plan] = lastDistrict;
+		else return;
+		obj = obj;
 	}
 
 	let period = 'present';
@@ -158,7 +149,7 @@
 	let showPluralities = false;
 
 	function color({ properties: d }) {
-		if (d.ALAND === 0) return '#fff';
+		if (!d.ALAND) return '#fff';
 		const total = d[`${metric}_total`];
 
 		if (pluralityVars.includes(metric)) {
@@ -167,7 +158,6 @@
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
 			return schemeBlues[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
-			if (!d.ALAND) return '#fff';
 			if (!isNum(getValue(d))) return '#eee';
 			if (total <= 10) return '#fff';
 			for (let i = 1; i < breaks.length; i++) {
@@ -180,16 +170,13 @@
 
 			if (showPluralities) {
 				const majority = groups.filter((g) => p(g) > 0.5)[0];
-				if (majority !== undefined) {
+				if (majority !== undefined)
 					return colors[majority] + levels[total < 130 ? 0 : total < 200 ? 1 : 2];
-				}
-
 				const pluralities = [...groups].sort((a, b) => p(b) - p(a));
 				const distance = p(pluralities[0]) - p(pluralities[1]);
 				return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 			} else {
 				const breaks = breaksCache[variable];
-
 				for (let i = 1; i < breaks.length; i++) {
 					if (p('asian') < breaks[i]) return seqColors[i - 1];
 				}
@@ -210,16 +197,12 @@
 					mesh((a, b) => xor(bgs.has(id(a)), bgs.has(id(b)))).coordinates.flat()
 				);
 				const ids = data
-					.map((f) => [pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull), id(f)])
-					.filter((d) => d[0])
-					.map((d) => d[1]);
+					.filter((f) => pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull))
+					.map(id);
 				drawings = [
 					...drawings,
 					{
-						outline: path({
-							type: 'LineString',
-							coordinates: hull
-						}),
+						outline: path({ type: 'LineString', coordinates: hull }),
 						ids,
 						stats: getStats(ids)
 					}
@@ -230,25 +213,14 @@
 	}
 
 	let congressMeshes;
-	$: {
-		if (congressMeshes === undefined && plan.startsWith('congress')) {
-			loadCongressMeshes();
-		}
-	}
-
-	async function loadCongressMeshes() {
-		const req = await fetch(`${base}/output_congress.topojson`);
-		const topoData = await req.json();
-		congressMeshes = Object.keys(topoData.objects).reduce((acc, k) => {
-			acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
-			return acc;
-		}, {});
-	}
+	$: plan.startsWith('congress') && congressMeshes === undefined && loadCongressMeshes();
+	const loadCongressMeshes = async () => (congressMeshes = await getCongressMeshes());
 
 	function getStats(input) {
-		let data1;
-		if (typeof input[0] === 'string') data1 = input.map((id) => data[idToIndex[id]].properties);
-		else data1 = input.map((f) => f.properties);
+		const data1 =
+			typeof input[0] === 'string'
+				? input.map((id) => data[idToIndex[id]].properties)
+				: input.map((f) => f.properties);
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
@@ -275,11 +247,10 @@
 	let fetchedDrawings;
 	$: {
 		if (showComms && !fetchedDrawings) {
-			fetchDrawings();
+			drawings = fetchDrawings();
 			fetchedDrawings = true;
 		}
 	}
-
 	async function fetchDrawings() {
 		try {
 			const req = await fetch(`${base}/data.json`);
@@ -292,12 +263,6 @@
 		}
 	}
 
-	const views = {
-		Chinatown: [80, 500, 300, 220],
-		'Chinatown Wide': [80, 430, 500, 440],
-		Brooklyn: [20, 550, 600, 600],
-		Full: [0, 0, 975, 1420]
-	};
 	let viewBox = views['Brooklyn'];
 	let clientWidth;
 	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
@@ -364,52 +329,18 @@
 			</button>
 		{/if}
 
-		{#if dynamicVars.includes(variable) && showPluralities}
-			<div class="legend">
-				{#each groups as grp}
-					{#each levels as lvl}
-						<div style="background-color: {colors[grp] + lvl}" />
-					{/each}
-					<p class="row-label">{capitalize(grp)}</p>
-				{/each}
-				<p class="col-head"><span>Weak plurality</span></p>
-				<p class="col-head" />
-				<p class="col-head">Majority</p>
-				<p class="col-head" />
-			</div>
-		{:else if pluralityVars.includes(metric)}
-			<div class="color-legend plurality-legend">
-				{#each periods as p, i}
-					<div style="background-color: {schemeBlues[i]}" />
-				{/each}
-				{#each periods as p}
-					<p>{p.replace('_', '-')}</p>
-				{/each}
-			</div>
-		{:else}
-			<div
-				class="color-legend"
-				class:pctasian={dynamicVars.includes(variable)}
-				style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 40px);"
-			>
-				{#each breaks as b, i}
-					<div
-						style="background-color: {dynamicVars.includes(variable)
-							? seqColors[i]
-							: schemeBlues[i]};"
-					/>
-				{/each}
-				{#each breaks as b, i}
-					<p>
-						{(breaks[breaks.length - 1] < 1
-							? pct(b, 0)
-							: breaks[breaks.length - 1] > 1000
-							? money(b)
-							: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? ' Asian' : '')}
-					</p>
-				{/each}
-			</div>
-		{/if}
+		<Legend
+			{groups}
+			{levels}
+			{colors}
+			{dynamicVars}
+			{variable}
+			{metric}
+			{showPluralities}
+			{pluralityVars}
+			{periods}
+			{breaks}
+		/>
 
 		<div class="stats">
 			<h3>
@@ -615,65 +546,11 @@
 		line-height: 1.25;
 	}
 
-	.legend {
-		margin: 23px 0;
-		display: grid;
-		grid-template-columns: repeat(3, 53px) 1fr;
-		row-gap: 9px;
-		grid-template-rows: repeat(5, 14px);
-	}
-
-	.row-label {
-		line-height: 1;
-		margin-left: 5px;
-	}
-
 	.plurality-toggle {
 		text-decoration: underline;
 		margin-left: 7px;
 		font-size: 14px;
 		line-height: 1;
-		/* text-transform: uppercase; */
-	}
-
-	.col-head {
-		text-transform: uppercase;
-		font-size: 11px;
-		line-height: 1.1;
-		margin-top: -3px;
-	}
-
-	.color-legend {
-		margin: 19px 0;
-		display: grid;
-		grid-template-rows: 12px 1fr;
-		row-gap: 4px;
-	}
-
-	.color-legend p {
-		font-size: 13px;
-		text-align: center;
-		line-height: 1;
-		position: relative;
-		right: 13px;
-	}
-
-	.color-legend.pctasian p {
-		text-align: left;
-		right: 7px;
-	}
-
-	.color-legend.pctasian p:last-child {
-		white-space: pre;
-	}
-
-	.plurality-legend {
-		grid-template-columns: repeat(4, 40px);
-	}
-
-	.plurality-legend p {
-		right: 0;
-		word-break: break-all;
 	}
 
 	table {

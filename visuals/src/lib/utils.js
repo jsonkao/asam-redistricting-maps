@@ -1,3 +1,7 @@
+import { base } from '$app/paths';
+import { geoPath } from 'd3-geo';
+import { feature, mesh as topoMesh } from 'topojson-client';
+
 export const pct = (x, decimals = 1) =>
 	Math.round(x * Math.pow(10, decimals + 2)) / Math.pow(10, decimals) + '%';
 
@@ -76,4 +80,28 @@ export function reduceCoordinatePrecision(d) {
 		coordinates: g.type === 'MultiPolygon' ? coords : coords[0]
 	};
 	return f ? { ...f, geometry } : geometry;
+}
+
+export const path = geoPath();
+
+export async function getPlansMeshes() {
+	const topoData = await (await fetch(`${base}/output_assembly_senate.topojson`)).json();
+	return Object.keys(topoData.objects).reduce((acc, k) => {
+		acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
+		return acc;
+	}, {});
+}
+
+export async function getPoints() {
+	const topoData = await (await fetch(`${base}/points.topojson`)).json();
+	return feature(topoData, topoData.objects.layer).features;
+}
+
+export async function getCongressMeshes() {
+	const req = await fetch(`${base}/output_congress.topojson`);
+	const topoData = await req.json();
+	return Object.keys(topoData.objects).reduce((acc, k) => {
+		acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
+		return acc;
+	}, {});
 }

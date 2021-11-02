@@ -40,3 +40,10 @@ export const idealValues = {
 	congress_letters: 776971,
 	congress_names: 776971
 };
+
+export const views = {
+	Chinatown: [80, 500, 300, 220],
+	'Chinatown Wide': [80, 430, 500, 440],
+	Brooklyn: [20, 550, 600, 600],
+	Full: [0, 0, 975, 1420]
+};
