@@ -281,11 +281,15 @@
 	}
 
 	async function fetchDrawings() {
-		const req = await fetch(`${base}/data.json`);
-		drawings = (await req.json()).map((r) => ({
-			...r,
-			stats: getStats(r.ids)
-		}));
+		try {
+			const req = await fetch(`${base}/data.json`);
+			drawings = (await req.json()).map((r) => ({
+				...r,
+				stats: getStats(r.ids)
+			}));
+		} catch (e) {
+			console.error(e);
+		}
 	}
 
 	const views = {
