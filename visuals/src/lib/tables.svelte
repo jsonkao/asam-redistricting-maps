@@ -89,11 +89,11 @@
 	th {
 		line-height: 1;
 		margin: 0;
-		font-size: 15px;
+		font-size: 0.93em;
 	}
 
 	.table-footer {
-		font-size: 15px;
+		font-size: 0.93em;
 	}
 
 	table td {

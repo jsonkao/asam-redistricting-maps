@@ -95,7 +95,7 @@
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 	let viewCutoff = 2765; // manually copied from make/mapshaper output
-	let plansMeshes, bgMesh, points;
+	let plans, bgMesh, points;
 
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
@@ -103,8 +103,7 @@
 
 		// Retrieve more data
 		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
-		console.log(promises);
-		plansMeshes = promises[0];
+		plans = promises[0];
 		points = promises[1];
 	});
 
@@ -184,7 +183,8 @@
 		}
 	}
 
-	let showPlans, showComms, drawing, dragging;
+	let showPlans = true;
+	let showComms, drawing, dragging;
 	let changingLines;
 	let draggedBgs = [];
 	let drawings = [];
@@ -211,9 +211,9 @@
 		}
 	}
 
-	let congressMeshes;
-	$: plan.startsWith('congress') && congressMeshes === undefined && loadCongressMeshes();
-	const loadCongressMeshes = async () => (congressMeshes = await getCongressMeshes());
+	let congressPlans;
+	$: plan.startsWith('congress') && congressPlans === undefined && loadCongressMeshes();
+	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
 
 	function getStats(input) {
 		const data1 =
@@ -264,7 +264,7 @@
 
 	let viewBox = views['Brooklyn'];
 	let clientWidth;
-	$: labelSize = (plan.endsWith('_names') ? 13 : 16) / ((clientWidth - 410) / viewBox[2]);
+	$: labelSize = (plan.endsWith('_names') ? .9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
 
 	let plan = 'assembly';
 
@@ -293,9 +293,28 @@
 		drawing &&
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
+
+	let containerFont = 18;
+	let showMoreOptions = false;
+	let showOnlyFocusDistricts = true;
+	function handleKeydown({ key }) {
+		if (key === '=') containerFont += 2;
+		if (key === '-') containerFont -= 2;
+		if (key === 'v') showMoreOptions = !showMoreOptions;
+		if (key === 'f') showOnlyFocusDistricts = !showOnlyFocusDistricts;
+	}
 </script>
 
-<div class="container" style="cursor: {drawing ? 'crosshair' : 'auto'}" bind:clientWidth>
+<svelte:window on:keydown={handleKeydown} />
+
+<div
+	class="container"
+	style="cursor: {drawing
+		? 'crosshair'
+		: 'auto'}; --container-font: {containerFont}px; --control-width: {270 +
+		(containerFont - 16) * 10}px;"
+	bind:clientWidth
+>
 	<div class="controls">
 		<select
 			bind:value={variable}
@@ -313,19 +332,23 @@
 			</optgroup>
 		</select>
 
-		{#if dynamicVars.includes(variable)}
-			{#each ['past', 'present'] as p}
-				<label>
-					<input type="radio" bind:group={period} name="period" value={p} />
-					{capitalize(p)}
-				</label>
-			{/each}
-		{/if}
+		{#if showMoreOptions}
+			<div in:slide out:slide>
+				{#if dynamicVars.includes(variable)}
+					{#each ['past', 'present'] as p}
+						<label>
+							<input type="radio" bind:group={period} name="period" value={p} />
+							{capitalize(p)}
+						</label>
+					{/each}
+				{/if}
 
-		{#if dynamicVars.includes(variable)}
-			<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
-				Show {showPluralities ? 'pct. asian' : 'pluralities'}
-			</button>
+				{#if dynamicVars.includes(variable)}
+					<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
+						Show {showPluralities ? 'pct. asian' : 'pluralities'}
+					</button>
+				{/if}
+			</div>
 		{/if}
 
 		<Legend
@@ -424,18 +447,21 @@
 		{aggregates}
 		{obj}
 		{handleLabelClick}
-		{congressMeshes}
-		{plansMeshes}
+		{congressPlans}
+		{plans}
 		{startDrag}
 		{endDrag}
 		{handleMouseMove}
 		{viewCutoff}
+		{showOnlyFocusDistricts}
 	/>
 
 	<div class="views">
 		<h3>Views</h3>
 		{#each Object.keys(views) as v}
-			<button on:click={() => (viewBox = views[v])}>{v}</button>
+			<button class:view-selected={viewBox === views[v]} on:click={() => (viewBox = views[v])}
+				>{v}</button
+			>
 		{/each}
 	</div>
 </div>
@@ -443,11 +469,11 @@
 <style>
 	.container {
 		margin: 0 auto;
-		--control-width: 270px;
+		font-size: var(--container-font);
 	}
 
 	select {
-		font-size: 16px;
+		font-size: 1em;
 		outline: none;
 		padding: 3px;
 		margin-bottom: 5px;
@@ -462,19 +488,23 @@
 
 	.views {
 		position: fixed;
-		right: 25px;
-		top: 22px;
+		right: 20px;
+		top: 15px;
 	}
 
 	.views h3 {
-		font-size: 16px;
+		font-size: 1em;
 	}
 	.views button {
 		display: block;
-		font-size: 16px;
+		font-size: 1em;
 		text-align: right;
 		line-height: 1.3;
 		text-decoration: underline;
+	}
+
+	.views button.view-selected {
+		font-weight: 600;
 	}
 
 	.stats div {
@@ -486,13 +516,13 @@
 	}
 
 	.stats h3 {
-		font-size: 16px;
+		font-size: 1em;
 		margin-bottom: 4px;
 		cursor: pointer;
-		width: 138px;
 	}
+
 	.stats h3 button.subbutton {
-		font-size: 14px;
+		font-size: 0.88em;
 		font-weight: 300;
 		text-decoration: underline;
 	}
@@ -500,7 +530,7 @@
 	.plurality-toggle {
 		text-decoration: underline;
 		margin-left: 7px;
-		font-size: 14px;
+		font-size: 0.88em;
 		line-height: 1;
 	}
 

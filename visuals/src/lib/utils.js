@@ -5,7 +5,7 @@ import { feature, mesh as topoMesh } from 'topojson-client';
 export const pct = (x, decimals = 1) =>
 	Math.round(x * Math.pow(10, decimals + 2)) / Math.pow(10, decimals) + '%';
 
-const D = (x) => Object.values(x.properties)[0];
+export const D = (x) => Object.values(x.properties)[0];
 
 export const money = (x) => '$' + Math.round(x / 1000) + 'k';
 
@@ -86,6 +86,7 @@ export const path = geoPath();
 
 export async function getPlansMeshes() {
 	const topoData = await (await fetch(`${base}/output_assembly_senate.topojson`)).json();
+	return topoData;
 	return Object.keys(topoData.objects).reduce((acc, k) => {
 		acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
 		return acc;
@@ -107,6 +108,7 @@ export async function getPoints() {
 export async function getCongressMeshes() {
 	const req = await fetch(`${base}/output_congress.topojson`);
 	const topoData = await req.json();
+	return topoData;
 	return Object.keys(topoData.objects).reduce((acc, k) => {
 		acc[k] = path(topoMesh(topoData, topoData.objects[k], (a, b) => D(a) !== D(b)));
 		return acc;

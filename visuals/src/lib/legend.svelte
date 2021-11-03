@@ -40,7 +40,7 @@
 	<div
 		class="color-legend"
 		class:pctasian={dynamicVars.includes(variable)}
-		style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 40px);"
+		style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 2.5em);"
 	>
 		{#each breaks as b, i}
 			<div
@@ -75,7 +75,7 @@
 
 	.col-head {
 		text-transform: uppercase;
-		font-size: 11px;
+		font-size: 0.7em;
 		line-height: 1.1;
 		margin-top: -3px;
 	}
@@ -88,7 +88,7 @@
 	}
 
 	.color-legend p {
-		font-size: 13px;
+		font-size: 0.8em;
 		text-align: center;
 		line-height: 1;
 		position: relative;

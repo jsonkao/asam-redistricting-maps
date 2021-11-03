@@ -1,6 +1,8 @@
 <script>
 	import { fade } from 'svelte/transition';
-	import { id } from '$lib/utils';
+	import { id, D, xor } from '$lib/utils';
+	import { focusDistricts } from '$lib/constants';
+	import { mesh as topoMesh } from 'topojson-client';
 
 	export let viewBox,
 		labelSize,
@@ -18,26 +20,41 @@
 		drawings,
 		showPlans,
 		plan,
-		points,
+		points = [],
 		tractMesh,
 		bgMesh,
 		mesh,
 		aggregates,
 		obj,
 		handleLabelClick,
-		congressMeshes,
-		plansMeshes,
+		congressPlans,
+		plans,
 		startDrag,
 		endDrag,
 		handleMouseMove,
-		viewCutoff;
+		viewCutoff, showOnlyFocusDistricts;
+
+	$: focuses = focusDistricts[plan];
+	$: showFocusDistricts = showOnlyFocusDistricts && focuses;
+	$: topo = ((plan.startsWith('congress') ? congressPlans : plans))
+	$: obj = topo ? topo.objects[plan] : undefined;
+	function getMesh() {
+		if (!topo) return;
+		if (showFocusDistricts) {
+			return path(topoMesh(topo, {
+				type: obj.type,
+				geometries: obj.geometries.filter(g => focuses.includes(g.properties[plan]))
+			}));
+		}
+		return path(topoMesh(topo, obj, (a, b) => D(a) !== D(b)));
+	}
 </script>
 
 <svg
 	viewBox={viewBox.join(' ')}
 	on:mousedown={startDrag}
 	on:mouseup={endDrag}
-	style="--font-size: {labelSize || 11}px"
+	style="--font-size: {labelSize || 0.8}em"
 >
 	<g class="block-groups">
 		{#each data as f, i (id(f))}
@@ -71,7 +88,7 @@
 				<path
 					class="mesh-district"
 					class:showPluralities
-					d={((plan.startsWith('congress') ? congressMeshes : plansMeshes) || {})[plan]}
+					d={getMesh(plan, plans, congressPlans, showOnlyFocusDistricts)}
 				/>
 			</g>
 		{/if}
@@ -88,15 +105,21 @@
 		{#if showPlans || changingLines}
 			<g class="labels" in:fade out:fade>
 				{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
-					{#if plan in p}
+					{#if plan in p && (!showFocusDistricts || showFocusDistricts && focuses.includes(p[plan]))}
 						<text
+							in:fade out:fade
 							{x}
 							{y}
 							class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
 							on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
+							class="text-label"
 						>
 							{p[plan]}
 						</text>
+						<path class="mesh-onhover mesh-district" d={obj && path(topoMesh(topo, {
+							type: obj.type,
+							geometries: obj.geometries.filter(g => p[plan] === g.properties[plan])
+						}))} />
 					{/if}
 				{/each}
 			</g>
@@ -108,7 +131,7 @@
 	svg {
 		margin-left: var(--control-width);
 		display: block;
-		width: calc(100% - var(--control-width) - 150px);
+		width: calc(100% - var(--control-width) * 1.45);
 	}
 
 	svg path.head {
@@ -130,6 +153,15 @@
 	.mesh-district {
 		stroke: black;
 		stroke-width: 1.1;
+	}
+
+	.meshes path.mesh-onhover {
+		stroke-width: 2;
+		opacity: 0;
+	}
+
+	.text-label:hover~.meshes path.mesh-onhover {
+		opacity: 1;
 	}
 
 	.mesh-community {
