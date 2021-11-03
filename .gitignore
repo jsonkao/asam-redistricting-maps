@@ -6,6 +6,10 @@
 
 cvap/*.zip
 data/*.zip
+
 plans/*
 !plans/*.geojson
 !plans/*.topojson
+
+streets/*
+!streets/*.geojson

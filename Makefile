@@ -38,7 +38,7 @@ visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 visuals/static/output_congress.topojson: visuals/static/output.topojson
 	mapshaper $< -o $@ target=congress,congress_letters,congress_names
 
-visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson
+visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson
 	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
 	-proj aea \
@@ -46,7 +46,9 @@ visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/se
 	-clean \
 	-o - format=topojson width=975 \
 	| python3 preprocess.py -compress-topo \
-	> $@
+	| mapshaper -i - \
+	-clean \
+	-o $@
 
 # For Mapbox
 visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson
@@ -133,6 +135,29 @@ mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
 mapping/tl_2021_36_bg.zip:
 	mkdir -p mapping
 	curl -L https://www2.census.gov/geo/tiger/TIGER2021/BG/tl_2021_36_bg.zip -o $@
+
+#
+# STREETS
+#
+
+streets/streets.geojson: streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp
+	mapshaper $< \
+	-filter "LeftCounty =='Kings' || RightCount=='Kings'" \
+	-simplify 0.8% \
+	-filter-fields Label \
+	-clean \
+	-o $@
+
+streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp:
+	curl -o streets/SimplifiedStreets.shp.zip -L "https://gis.ny.gov/gisdata/fileserver/?DSID=932&file=SimplifiedStreets.shp.zip"
+	unzip -d streets streets/SimplifiedStreets.shp.zip
+	mapshaper streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp \
+	-filter "LeftCityTo =='New York' || RightCityT=='New York'" \
+	-filter "Label.length > 0" \
+	-proj wgs84 \
+	-clean \
+	-filter-fields Label,LeftCounty,RightCount \
+	-o streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp force
 
 #
 # DATA
