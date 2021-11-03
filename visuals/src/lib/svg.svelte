@@ -32,22 +32,27 @@
 		startDrag,
 		endDrag,
 		handleMouseMove,
-		viewCutoff, showOnlyFocusDistricts;
+		viewCutoff,
+		showOnlyFocusDistricts;
 
 	$: focuses = focusDistricts[plan];
 	$: showFocusDistricts = showOnlyFocusDistricts && focuses;
-	$: topo = ((plan.startsWith('congress') ? congressPlans : plans))
+	$: topo = plan.startsWith('congress') ? congressPlans : plans;
 	$: obj = topo ? topo.objects[plan] : undefined;
 	function getMesh() {
 		if (!topo) return;
 		if (showFocusDistricts) {
-			return path(topoMesh(topo, {
-				type: obj.type,
-				geometries: obj.geometries.filter(g => focuses.includes(g.properties[plan]))
-			}));
+			return path(
+				topoMesh(topo, {
+					type: obj.type,
+					geometries: obj.geometries.filter((g) => focuses.includes(g.properties[plan]))
+				})
+			);
 		}
 		return path(topoMesh(topo, obj, (a, b) => D(a) !== D(b)));
 	}
+
+	let hoveredDistrict;
 </script>
 
 <svg
@@ -63,7 +68,7 @@
 					class:head={draggedBgs[0] === id(f)}
 					d={path(f)}
 					fill={color(f, metric, period, showPluralities)}
-					on:click={() => changingLines && neighbor(i)}
+					on:click={() => changingLines && plan.includes('_') && neighbor(i)}
 					on:contextmenu|preventDefault={() => console.log(f.properties)}
 					on:mousemove|preventDefault={() => handleMouseMove(f)}
 				/>
@@ -105,23 +110,34 @@
 		{#if showPlans || changingLines}
 			<g class="labels" in:fade out:fade>
 				{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
-					{#if plan in p && (!showFocusDistricts || showFocusDistricts && focuses.includes(p[plan]))}
+					{#if plan in p && (!showFocusDistricts || (showFocusDistricts && focuses.includes(p[plan])))}
 						<text
-							in:fade out:fade
+							in:fade
+							out:fade
 							{x}
 							{y}
 							class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
 							on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
-							class="text-label"
+							on:mousemove={() => (hoveredDistrict = p[plan])}
+							on:mouseout={() => (hoveredDistrict = null)}
+							on:blur={undefined}
 						>
 							{p[plan]}
 						</text>
-						<path class="mesh-onhover mesh-district" d={obj && path(topoMesh(topo, {
-							type: obj.type,
-							geometries: obj.geometries.filter(g => p[plan] === g.properties[plan])
-						}))} />
 					{/if}
 				{/each}
+				{#if hoveredDistrict}
+					<path
+						class="mesh-onhover mesh-district"
+						d={obj &&
+							path(
+								topoMesh(topo, {
+									type: obj.type,
+									geometries: obj.geometries.filter((g) => hoveredDistrict === g.properties[plan])
+								})
+							)}
+					/>
+				{/if}
 			</g>
 		{/if}
 	</g>
@@ -156,12 +172,7 @@
 	}
 
 	.meshes path.mesh-onhover {
-		stroke-width: 2;
-		opacity: 0;
-	}
-
-	.text-label:hover~.meshes path.mesh-onhover {
-		opacity: 1;
+		stroke-width: 2.5;
 	}
 
 	.mesh-community {
@@ -186,7 +197,7 @@
 			0 1.5px 2px var(--shadow), 0 -1.5px 2px var(--shadow);
 	}
 
-	.labels text.chosen {
+	.labels text.chosen, .labels text:hover {
 		font-weight: 700;
 	}
 </style>

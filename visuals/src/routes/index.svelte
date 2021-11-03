@@ -51,7 +51,7 @@
 
 <script>
 	import ckmeans from 'ckmeans';
-	import { slide } from 'svelte/transition';
+	import { slide, fade } from 'svelte/transition';
 	import concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
 	import {
@@ -229,7 +229,7 @@
 			benefits: prop('families', 'benefits'),
 			pop20_total: sum('pop20_total')
 		};
-		['pop20', 'cvap19'].forEach((m) => groups.forEach((g) => (output[m + g] = prop(m, g))));
+		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) => groups.forEach((g) => (output[m + g] = prop(m, g))));
 		return output;
 	}
 
@@ -295,7 +295,7 @@
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
 	let containerFont = 18;
-	let showMoreOptions = false;
+	let showMoreOptions = true;
 	let showOnlyFocusDistricts = true;
 	function handleKeydown({ key }) {
 		if (key === '=') containerFont += 2;
@@ -456,7 +456,8 @@
 		{showOnlyFocusDistricts}
 	/>
 
-	<div class="views">
+	{#if showMoreOptions}
+	<div class="views" in:fade out:fade>
 		<h3>Views</h3>
 		{#each Object.keys(views) as v}
 			<button class:view-selected={viewBox === views[v]} on:click={() => (viewBox = views[v])}
@@ -464,6 +465,7 @@
 			>
 		{/each}
 	</div>
+	{/if}
 </div>
 
 <style>

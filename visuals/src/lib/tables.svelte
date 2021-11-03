@@ -24,20 +24,25 @@
 						<th>CVAP</th>
 						<th>Pop.</th>
 					</tr>
-					{#each groups as g}
-						<tr>
-							<td>{capitalize(g)}</td>
-							<td>{pct(stats[a]['cvap19' + g])}</td>
-							<td>{pct(stats[a]['pop20' + g])}</td>
-						</tr>
-					{/each}
+					<tr>
+						<td>Asians in 2010</td>
+						<td>{pct(stats[a]['cvap10asian'])}</td>
+						<td>{pct(stats[a]['pop10asian'])}</td>
+					</tr>
+					<tr>
+						<td>Asians now</td>
+						<td>{pct(stats[a]['cvap19asian'])}</td>
+						<td>{pct(stats[a]['pop20asian'])}</td>
+					</tr>
 				</table>
-				<p class="table-footer">
-					Income: {money(stats[a].income) +
-						(changingLines && plan in idealValues
-							? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
-							: '')}
-				</p>
+				{#if changingLines && plan in idealValues}
+					<p class="table-footer">
+						Income: {money(stats[a].income) +
+							(changingLines && plan in idealValues
+								? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
+								: '')}
+					</p>
+				{/if}
 			</div>
 		{/if}
 	{/each}
@@ -75,8 +80,9 @@
 
 	table {
 		border-collapse: collapse;
-		margin: 4px 0;
-		min-width: 200px;
+		margin: 0;
+		margin-bottom: 4px;
+		min-width: 240px;
 	}
 
 	table th {
