@@ -219,7 +219,6 @@
 	let streets, showStreets;
 	$: showStreets && streets === undefined && loadStreets();
 	const loadStreets = async () => (streets = await getStreets());
-	$: console.log(streets);
 
 	function getStats(input) {
 		const data1 =
@@ -462,6 +461,8 @@
 		{handleMouseMove}
 		{viewCutoff}
 		{showOnlyFocusDistricts}
+		{showStreets}
+		{streets}
 	/>
 
 	{#if showMoreOptions}
@@ -472,8 +473,9 @@
 					{v}
 				</button>
 			{/each}
+			<br />
 			<button class:view-selected={showStreets} on:click={() => (showStreets = !showStreets)}>
-				Streets
+				See Streets
 			</button>
 		</div>
 	{/if}

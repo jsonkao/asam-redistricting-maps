@@ -54,8 +54,18 @@
 		return path(topoMesh(topo, obj, (a, b) => D(a) !== D(b)));
 	}
 
-	let hoveredDistrict;
+	let districtHighlight, streetHighlight;
+
+	function handleStreetClick({ pageX: x, pageY: y }, { properties: { Label: label }}) {
+		streetHighlight = { x, y, label };
+	}
 </script>
+
+{#if streetHighlight}
+	<p class="street-inspector" style="left: {streetHighlight.x}px; top: calc({streetHighlight.y}px - 1em)">
+		{streetHighlight.label}
+	</p>
+{/if}
 
 <svg
 	viewBox={viewBox.join(' ')}
@@ -120,22 +130,22 @@
 							{y}
 							class:chosen={aggregates.includes(`${plan},${p[plan]}`)}
 							on:click={() => handleLabelClick(`${plan},${p[plan]}`)}
-							on:mousemove={() => (hoveredDistrict = p[plan])}
-							on:mouseout={() => (hoveredDistrict = null)}
+							on:mousemove={() => (districtHighlight = p[plan])}
+							on:mouseout={() => (districtHighlight = null)}
 							on:blur={undefined}
 						>
 							{p[plan]}
 						</text>
 					{/if}
 				{/each}
-				{#if hoveredDistrict}
+				{#if districtHighlight}
 					<path
 						class="mesh-onhover mesh-district"
 						d={obj &&
 							path(
 								topoMesh(topo, {
 									type: obj.type,
-									geometries: obj.geometries.filter((g) => hoveredDistrict === g.properties[plan])
+									geometries: obj.geometries.filter((g) => districtHighlight === g.properties[plan])
 								})
 							)}
 					/>
@@ -143,10 +153,10 @@
 			</g>
 		{/if}
 
-		{#if showStreets && streets}
-			<g class="streets">
+		{#if streets}
+			<g class="streets" on:mousemove={() => (streetHighlight = null)} class:showStreets>
 				{#each streets as f}
-					<path d={path(f)} />
+					<path d={path(f)} on:click|preventDefault={(e) => handleStreetClick(e, f)} />
 				{/each}
 			</g>
 		{/if}
@@ -167,9 +177,21 @@
 	}
 
 	.streets {
+		opacity: 0;
+	}
+
+	.streets.showStreets {
+		opacity: 1;
+	}
+
+	.streets path {
+		stroke-width: 2;
 		stroke: black;
-		stroke-width: 1;
-		fill: none;
+		opacity: 0;
+	}
+
+	.streets path:hover {
+		opacity: 1;
 	}
 
 	.meshes path {
@@ -216,5 +238,16 @@
 	.labels text.chosen,
 	.labels text:hover {
 		font-weight: 700;
+	}
+
+	.street-inspector {
+		font-size: .8em;
+		background: #fff;
+		margin: 0;
+		position: absolute;
+		line-height: 1;
+		padding: 1px 2px;
+		pointer-events: none;
+		text-align: right;
 	}
 </style>
