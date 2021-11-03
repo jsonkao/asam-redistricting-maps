@@ -114,3 +114,10 @@ export async function getCongressMeshes() {
 		return acc;
 	}, {});
 }
+
+
+export async function getStreets() {
+	const req = await fetch(`${base}/output_streets.topojson`);
+	const topoData = await req.json();
+	return feature(topoData, topoData.objects.streets).features;
+}

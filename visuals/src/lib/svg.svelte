@@ -33,7 +33,9 @@
 		endDrag,
 		handleMouseMove,
 		viewCutoff,
-		showOnlyFocusDistricts;
+		showOnlyFocusDistricts,
+		showStreets,
+		streets;
 
 	$: focuses = focusDistricts[plan];
 	$: showFocusDistricts = showOnlyFocusDistricts && focuses;
@@ -140,6 +142,14 @@
 				{/if}
 			</g>
 		{/if}
+
+		{#if showStreets && streets}
+			<g class="streets">
+				{#each streets as f}
+					<path d={path(f)} />
+				{/each}
+			</g>
+		{/if}
 	</g>
 </svg>
 
@@ -154,6 +164,12 @@
 		stroke: black;
 		stroke-width: 2;
 		stroke-dasharray: 4;
+	}
+
+	.streets {
+		stroke: black;
+		stroke-width: 1;
+		fill: none;
 	}
 
 	.meshes path {
@@ -197,7 +213,8 @@
 			0 1.5px 2px var(--shadow), 0 -1.5px 2px var(--shadow);
 	}
 
-	.labels text.chosen, .labels text:hover {
+	.labels text.chosen,
+	.labels text:hover {
 		font-weight: 700;
 	}
 </style>

@@ -1,7 +1,8 @@
 PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
-BROOKLYN_VIEWRECT = 20,550,620,1150
+# xmin, ymin, xmax, ymax
+BROOKLYN_VIEWRECT = 35,670,685,1190
 
 #
 # PLANS for web
@@ -37,6 +38,9 @@ visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 
 visuals/static/output_congress.topojson: visuals/static/output.topojson
 	mapshaper $< -o $@ target=congress,congress_letters,congress_names
+
+visuals/static/output_streets.topojson: visuals/static/output.topojson Makefile
+	mapshaper $< -o $@ target=streets
 
 visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson
 	mapshaper -i $^ combine-files \

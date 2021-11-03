@@ -63,7 +63,8 @@
 		path,
 		getPoints,
 		getPlansMeshes,
-		getCongressMeshes
+		getCongressMeshes,
+		getStreets
 	} from '$lib/utils';
 	import {
 		colors,
@@ -215,6 +216,11 @@
 	$: plan.startsWith('congress') && congressPlans === undefined && loadCongressMeshes();
 	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
 
+	let streets, showStreets;
+	$: showStreets && streets === undefined && loadStreets();
+	const loadStreets = async () => (streets = await getStreets());
+	$: console.log(streets);
+
 	function getStats(input) {
 		const data1 =
 			typeof input[0] === 'string'
@@ -229,7 +235,9 @@
 			benefits: prop('families', 'benefits'),
 			pop20_total: sum('pop20_total')
 		};
-		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) => groups.forEach((g) => (output[m + g] = prop(m, g))));
+		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) =>
+			groups.forEach((g) => (output[m + g] = prop(m, g)))
+		);
 		return output;
 	}
 
@@ -264,7 +272,7 @@
 
 	let viewBox = views['Brooklyn'];
 	let clientWidth;
-	$: labelSize = (plan.endsWith('_names') ? .9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
+	$: labelSize = (plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
 
 	let plan = 'assembly';
 
@@ -457,14 +465,17 @@
 	/>
 
 	{#if showMoreOptions}
-	<div class="views" in:fade out:fade>
-		<h3>Views</h3>
-		{#each Object.keys(views) as v}
-			<button class:view-selected={viewBox === views[v]} on:click={() => (viewBox = views[v])}
-				>{v}</button
-			>
-		{/each}
-	</div>
+		<div class="views" in:fade out:fade>
+			<h3>Views</h3>
+			{#each Object.keys(views) as v}
+				<button class:view-selected={viewBox === views[v]} on:click={() => (viewBox = views[v])}>
+					{v}
+				</button>
+			{/each}
+			<button class:view-selected={showStreets} on:click={() => (showStreets = !showStreets)}>
+				Streets
+			</button>
+		</div>
 	{/if}
 </div>
 

@@ -44,17 +44,17 @@ export const idealValues = {
 export const views = {
 	// Chinatown: [80, 500, 300, 220],
 	// 'Chinatown Wide': [80, 430, 500, 440],
-	'Brooklyn': [35, 670, 650, 550],
-	'Chinatown': [80, 430, 500, 600],
+	Brooklyn: [35, 670, 650, 520],
+	Chinatown: [80, 430, 500, 600],
 	// 'Brooklyn and Queens': [20, 450, 700, 700],
 	'All of NYC': [0, 0, 975, 1420]
 };
 
 export const focusDistricts = {
-	assembly: '49 47 45 41 51 48'.split(' ').map(x => +x),
+	assembly: '49 47 45 41 51 48'.split(' ').map((x) => +x),
 	assembly_letters: 'AU AW AS AT AV AY AO'.split(' '),
 	assembly_names: 'BNSNHRST GRAVESEND MADFLAT CNYSHPSHD BAYDYKER SUNSET BOROUGHPARK'.split(' '),
-	senate: '20 17 23 22 19'.split(' ').map(x => +x),
+	senate: '20 17 23 22 19'.split(' ').map((x) => +x),
 	senate_letters: 'G AA Q AC'.split(' '),
 	senate_names: 'SNSTPRK BAYGRAVES MADMID STATENCONEY FLATBUSH'.split(' ')
-}
+};
