@@ -395,9 +395,9 @@
 									{#each ['', '_letters', '_names'] as proposal}
 										<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
 									{/each}
+									<option disabled>Unity Map (soon)</option>
 								</optgroup>
 							{/each}
-							<optgroup label="Unity Map (not yet released)" />
 						</select>
 					</div>
 					<Tables
@@ -488,6 +488,10 @@
 			</button>
 		</div>
 	{/if}
+
+	<div class="footer">
+		<p>Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu">jason.kao@columbia.edu</a>.</p>
+	</div>
 </div>
 
 <style>
@@ -559,5 +563,12 @@
 
 	.stats .plan-selector {
 		margin-bottom: 10px;
+	}
+
+	.footer {
+		padding: 0 15px;
+		margin-top: 20px;
+		font-size: 0.8em;
+		text-align: right;
 	}
 </style>
