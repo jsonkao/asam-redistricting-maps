@@ -2,7 +2,7 @@ import { base } from '$app/paths';
 import { geoPath } from 'd3-geo';
 import { feature, mesh as topoMesh } from 'topojson-client';
 
-export const pct = (x, decimals = 1) =>
+export const pct = (x, decimals = 0) =>
 	Math.round(x * Math.pow(10, decimals + 2)) / Math.pow(10, decimals) + '%';
 
 export const D = (x) => Object.values(x.properties)[0];

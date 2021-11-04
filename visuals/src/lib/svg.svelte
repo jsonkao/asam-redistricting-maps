@@ -156,7 +156,7 @@
 		{#if streets}
 			<g class="streets" on:mousemove={() => (streetHighlight = null)} class:showStreets>
 				{#each streets as f}
-					<path d={path(f)} on:click|preventDefault={(e) => handleStreetClick(e, f)} />
+					<path d={path(f)} on:click|preventDefault={(e) => showStreets && handleStreetClick(e, f)} />
 				{/each}
 			</g>
 		{/if}
@@ -185,7 +185,7 @@
 	}
 
 	.streets path {
-		stroke-width: 2;
+		stroke-width: 1.5;
 		stroke: black;
 		opacity: 0;
 	}

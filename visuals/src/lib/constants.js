@@ -44,7 +44,7 @@ export const idealValues = {
 export const views = {
 	// Chinatown: [80, 500, 300, 220],
 	// 'Chinatown Wide': [80, 430, 500, 440],
-	Brooklyn: [35, 670, 650, 520],
+	Brooklyn: [35, 670, 600, 520],
 	Chinatown: [80, 430, 500, 600],
 	// 'Brooklyn and Queens': [20, 450, 700, 700],
 	'All of NYC': [0, 0, 975, 1420]

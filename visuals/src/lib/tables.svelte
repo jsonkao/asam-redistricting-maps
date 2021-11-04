@@ -34,6 +34,11 @@
 						<td>{pct(stats[a]['cvap19asian'])}</td>
 						<td>{pct(stats[a]['pop20asian'])}</td>
 					</tr>
+					<tr>
+						<td>Asian increase</td>
+						<td>{pct(stats[a]['pct_increase'])}</td>
+						<td>{pct(stats[a]['pct_increase_cvap'])}</td>
+					</tr>
 				</table>
 				{#if changingLines && plan in idealValues}
 					<p class="table-footer">

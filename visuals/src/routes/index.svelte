@@ -93,16 +93,30 @@
 		pluralityVars,
 		idToIndex;
 
+	let showPlans = true;
+	let showComms, showStreets;
+	let showMoreOptions = true;
+	let showOnlyFocusDistricts = false;
+	let drawing, dragging, changingLines;
+	let fetchedDrawings;
+	let draggedBgs = [];
+	let drawings = [];
+	let aggregates = [];
+	let stats = {};
+
+	let plan = 'assembly';
+	let bgMesh, plans, congressPlans, points, streets;
+
+	let viewCutoff = 2183; // manually copied from make/mapshaper output
+	let viewBox = views['Brooklyn'];
+	let containerFont = 18;
+	let clientWidth;
+
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
-	let viewCutoff = 2765; // manually copied from make/mapshaper output
-	let plans, bgMesh, points;
 
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
-		viewCutoff = 6000;
-
-		// Retrieve more data
 		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
 		plans = promises[0];
 		points = promises[1];
@@ -184,11 +198,6 @@
 		}
 	}
 
-	let showPlans = true;
-	let showComms, drawing, dragging;
-	let changingLines;
-	let draggedBgs = [];
-	let drawings = [];
 	$: {
 		if (!dragging && draggedBgs.length > 0) {
 			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
@@ -212,11 +221,9 @@
 		}
 	}
 
-	let congressPlans;
 	$: plan.startsWith('congress') && congressPlans === undefined && loadCongressMeshes();
 	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
 
-	let streets, showStreets;
 	$: showStreets && streets === undefined && loadStreets();
 	const loadStreets = async () => (streets = await getStreets());
 
@@ -228,11 +235,18 @@
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
+		let old_asian = sum('pop10_asian');
+		let new_asian = sum('pop20_asian');
+		let old_asiancvap = sum('cvap10_asian');
+		let new_asiancvap = sum('cvap19_asian');
+
 		const output = {
 			income: wMean('income'),
 			hhlang: prop('hhlang', 'asian'),
 			benefits: prop('families', 'benefits'),
-			pop20_total: sum('pop20_total')
+			pop20_total: sum('pop20_total'),
+			pct_increase: (new_asian - old_asian) / old_asian,
+			pct_increase_cvap: (new_asiancvap - old_asiancvap) / old_asiancvap
 		};
 		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) =>
 			groups.forEach((g) => (output[m + g] = prop(m, g)))
@@ -250,7 +264,6 @@
 		}
 	}
 
-	let fetchedDrawings;
 	$: {
 		if (showComms && !fetchedDrawings) {
 			fetchDrawings();
@@ -269,14 +282,7 @@
 		}
 	}
 
-	let viewBox = views['Brooklyn'];
-	let clientWidth;
 	$: labelSize = (plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
-
-	let plan = 'assembly';
-
-	let aggregates = [];
-	let stats = {};
 
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
@@ -301,9 +307,6 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
-	let containerFont = 18;
-	let showMoreOptions = true;
-	let showOnlyFocusDistricts = true;
 	function handleKeydown({ key }) {
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
@@ -377,11 +380,11 @@
 					on:click={() => {
 						showPlans = !showPlans;
 						showComms = false;
-					}}>Plans ↓</button
+					}}>Plans {showPlans ? '↑' : '↓'}</button
 				>
-				<button class="subbutton" on:click={() => (changingLines = !changingLines)}>
+				<!-- <button class="subbutton" on:click={() => (changingLines = !changingLines)}>
 					{changingLines ? 'Original' : 'Modify'}
-				</button>
+				</button> -->
 			</h3>
 			{#if showPlans}
 				<div in:slide out:slide>
@@ -394,6 +397,7 @@
 									{/each}
 								</optgroup>
 							{/each}
+							<optgroup label="Unity Map (not yet released)" />
 						</select>
 					</div>
 					<Tables
@@ -415,7 +419,7 @@
 					on:click={() => {
 						showComms = !showComms;
 						showPlans = false;
-					}}>Communities ↓</button
+					}}>Communities {showComms ? '↑' : '↓'}</button
 				>
 				<button on:click={() => (drawing = true)}>+</button>
 			</h3>
@@ -469,12 +473,17 @@
 		<div class="views" in:fade out:fade>
 			<h3>Views</h3>
 			{#each Object.keys(views) as v}
-				<button class:view-selected={viewBox === views[v]} on:click={() => (viewBox = views[v])}>
+				<button
+					class:view-selected={viewBox === views[v]}
+					on:click={() => {
+						viewBox = views[v];
+						viewCutoff = 6000;
+					}}
+				>
 					{v}
 				</button>
 			{/each}
-			<br />
-			<button class:view-selected={showStreets} on:click={() => (showStreets = !showStreets)}>
+			<button class:view-selected={showStreets} on:click={() => (showStreets = !showStreets)} style="margin-top: 10px;">
 				See Streets
 			</button>
 		</div>
@@ -512,10 +521,9 @@
 	}
 	.views button {
 		display: block;
-		font-size: 1em;
+		font-size: 0.9em;
 		text-align: right;
 		line-height: 1.3;
-		text-decoration: underline;
 	}
 
 	.views button.view-selected {
