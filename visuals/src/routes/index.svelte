@@ -83,6 +83,7 @@
 	import Legend from '$lib/legend.svelte';
 	import Tables from '$lib/tables.svelte';
 	import Panel from '$lib/panel.svelte';
+	import Modal from '$lib/modal.svelte';
 
 	export let topoData,
 		obj,
@@ -95,7 +96,7 @@
 		idToIndex;
 
 	let panels = [];
-	let showStreets;
+	let showStreets, showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
 	let drawing, dragging, changingLines;
@@ -112,19 +113,22 @@
 
 	let containerFont = 18;
 	let clientWidth;
-	let viewCutoff = 2183; // manually copied from make/mapshaper output
+	let viewCutoff = 3144; // manually copied from make/mapshaper output
 	let view = Object.keys(views)[0];
 	$: viewBox = views[view];
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
+	const closeModal = () => showModal = false;
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
 		plans = promises[0];
 		points = promises[1];
 		viewCutoff = data.length;
+
+		showModal = true;
 	});
 
 	let lastDistrict;
@@ -325,6 +329,8 @@
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
+
+<Modal {showModal} {closeModal} />
 
 <div
 	class="container"
