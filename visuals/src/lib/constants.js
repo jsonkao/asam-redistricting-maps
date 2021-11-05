@@ -44,10 +44,11 @@ export const idealValues = {
 export const views = {
 	// Chinatown: [80, 500, 300, 220],
 	// 'Chinatown Wide': [80, 430, 500, 440],
-	Brooklyn: [35, 670, 600, 520],
-	Chinatown: [80, 430, 500, 600],
-	// 'Brooklyn and Queens': [20, 450, 700, 700],
-	'All of NYC': [0, 0, 975, 1420]
+	Brooklyn: [20, 670, 600, 520],
+	// 'South Brooklyn': [20, 760, 500, 426],
+	'Lower Manhattan': [80, 430, 500, 600],
+	Queens: [200, 290, 775, 600],
+	'All of NYC': [0, 0, 975, 1220]
 };
 
 export const focusDistricts = {

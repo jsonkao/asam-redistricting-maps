@@ -51,7 +51,7 @@
 
 <script>
 	import ckmeans from 'ckmeans';
-	import { slide, fade } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
 	import concaveman from 'concaveman';
 	import pointInPolygon from 'point-in-polygon';
 	import {
@@ -82,6 +82,7 @@
 	import Svg from '$lib/svg.svelte';
 	import Legend from '$lib/legend.svelte';
 	import Tables from '$lib/tables.svelte';
+	import Panel from '$lib/panel.svelte';
 
 	export let topoData,
 		obj,
@@ -93,8 +94,8 @@
 		pluralityVars,
 		idToIndex;
 
-	let showPlans = true;
-	let showComms, showStreets;
+	let panels = [];
+	let showStreets;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
 	let drawing, dragging, changingLines;
@@ -104,13 +105,16 @@
 	let aggregates = [];
 	let stats = {};
 
+	let presentationMode = false;
+
 	let plan = 'assembly';
 	let bgMesh, plans, congressPlans, points, streets;
 
-	let viewCutoff = 2183; // manually copied from make/mapshaper output
-	let viewBox = views['Brooklyn'];
 	let containerFont = 18;
 	let clientWidth;
+	let viewCutoff = 2183; // manually copied from make/mapshaper output
+	let view = Object.keys(views)[0];
+	$: viewBox = views[view];
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
@@ -120,6 +124,7 @@
 		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
 		plans = promises[0];
 		points = promises[1];
+		viewCutoff = data.length;
 	});
 
 	let lastDistrict;
@@ -265,7 +270,7 @@
 	}
 
 	$: {
-		if (showComms && !fetchedDrawings) {
+		if (panels.includes('communities') && !fetchedDrawings) {
 			fetchDrawings();
 			fetchedDrawings = true;
 		}
@@ -281,6 +286,9 @@
 			console.error(e);
 		}
 	}
+
+	const togglePanel = (p) =>
+		(panels = panels.includes(p) ? panels.filter((x) => x !== p) : [...panels, p]);
 
 	$: labelSize = (plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
 
@@ -308,6 +316,7 @@
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
 	function handleKeydown({ key }) {
+		if (!presentationMode) return;
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
 		if (key === 'v') showMoreOptions = !showMoreOptions;
@@ -374,64 +383,58 @@
 			{breaks}
 		/>
 
-		<div class="stats">
-			<h3>
-				<button
-					on:click={() => {
-						showPlans = !showPlans;
-						showComms = false;
-					}}>Plans {showPlans ? '↑' : '↓'}</button
-				>
-				<!-- <button class="subbutton" on:click={() => (changingLines = !changingLines)}>
-					{changingLines ? 'Original' : 'Modify'}
-				</button> -->
-			</h3>
-			{#if showPlans}
-				<div in:slide out:slide>
-					<div class="plan-selector">
-						<select bind:value={plan}>
-							{#each ['assembly', 'senate', 'congress'] as scope}
-								<optgroup label={capitalize(scope)}>
-									{#each ['', '_letters', '_names'] as proposal}
-										<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
-									{/each}
-									<option disabled>Unity Map (soon)</option>
-								</optgroup>
-							{/each}
-						</select>
-					</div>
-					<Tables
-						{aggregates}
-						{handleLabelClick}
-						{plan}
-						{stats}
-						{groups}
-						{changingLines}
-						{idealValues}
-					/>
+		<Panel panelName="plans" {panels} {togglePanel}>
+			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
+				{changingLines ? 'Original' : 'Modify'}
+			</button> -->
+			<div slot="body">
+				<div class="plan-selector">
+					<select bind:value={plan}>
+						{#each ['assembly', 'senate', 'congress'] as scope}
+							<optgroup label={capitalize(scope)}>
+								{#each ['', '_letters', '_names'] as proposal}
+									<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
+								{/each}
+								<option disabled>Unity Map (soon)</option>
+							</optgroup>
+						{/each}
+					</select>
 				</div>
-			{/if}
-		</div>
+				<Tables
+					{aggregates}
+					{handleLabelClick}
+					{plan}
+					{stats}
+					{groups}
+					{changingLines}
+					{idealValues}
+				/>
+			</div>
+		</Panel>
 
-		<div class="stats">
-			<h3>
-				<button
-					on:click={() => {
-						showComms = !showComms;
-						showPlans = false;
-					}}>Communities {showComms ? '↑' : '↓'}</button
-				>
-				<button on:click={() => (drawing = true)}>+</button>
-			</h3>
-			{#if showComms}
-				<div class="community" in:slide out:slide>
-					<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
-					<button on:click={save} style="font-size: 13px;">
-						<b>[SAVE]</b>
-					</button>
-				</div>
-			{/if}
-		</div>
+		<Panel panelName="views" {panels} {togglePanel}>
+			<div slot="body" class="views">
+				<select bind:value={view}>
+					{#each Object.keys(views) as v}
+						<option value={v}>{v}</option>
+					{/each}
+				</select>
+				<label>
+					<input type="checkbox" bind:checked={showStreets} />
+					Inspect streets
+				</label>
+			</div>
+		</Panel>
+
+		<Panel panelName="communities" {panels} {togglePanel}>
+			<button slot="title" on:click={() => (drawing = true)}>+</button>
+			<div slot="body" class="community">
+				<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
+				<button on:click={save} style="font-size: 13px;">
+					<b>[SAVE]</b>
+				</button>
+			</div>
+		</Panel>
 	</div>
 
 	<Svg
@@ -447,9 +450,8 @@
 		{metric}
 		{period}
 		{tractVars}
-		{showComms}
+		{panels}
 		{drawings}
-		{showPlans}
 		{plan}
 		{points}
 		{tractMesh}
@@ -469,28 +471,12 @@
 		{streets}
 	/>
 
-	{#if showMoreOptions}
-		<div class="views" in:fade out:fade>
-			<h3>Views</h3>
-			{#each Object.keys(views) as v}
-				<button
-					class:view-selected={viewBox === views[v]}
-					on:click={() => {
-						viewBox = views[v];
-						viewCutoff = 6000;
-					}}
-				>
-					{v}
-				</button>
-			{/each}
-			<button class:view-selected={showStreets} on:click={() => (showStreets = !showStreets)} style="margin-top: 10px;">
-				See Streets
-			</button>
-		</div>
-	{/if}
-
 	<div class="footer">
-		<p>Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu">jason.kao@columbia.edu</a>.</p>
+		<p>
+			Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu"
+				>jason.kao@columbia.edu</a
+			>.
+		</p>
 	</div>
 </div>
 
@@ -514,44 +500,8 @@
 		padding-left: 15px;
 	}
 
-	.views {
-		position: fixed;
-		right: 20px;
-		top: 15px;
-	}
-
-	.views h3 {
-		font-size: 1em;
-	}
-	.views button {
-		display: block;
-		font-size: 0.9em;
-		text-align: right;
-		line-height: 1.3;
-	}
-
-	.views button.view-selected {
-		font-weight: 600;
-	}
-
-	.stats div {
-		margin-bottom: 20px;
-	}
-
-	.stats div.community {
+	.community {
 		margin-bottom: 10px;
-	}
-
-	.stats h3 {
-		font-size: 1em;
-		margin-bottom: 4px;
-		cursor: pointer;
-	}
-
-	.stats h3 button.subbutton {
-		font-size: 0.88em;
-		font-weight: 300;
-		text-decoration: underline;
 	}
 
 	.plurality-toggle {
@@ -561,14 +511,19 @@
 		line-height: 1;
 	}
 
-	.stats .plan-selector {
-		margin-bottom: 10px;
-	}
-
 	.footer {
 		padding: 0 15px;
 		margin-top: 20px;
 		font-size: 0.8em;
 		text-align: right;
+	}
+
+	.views label {
+		display: block;
+		cursor: pointer;
+	}
+
+	.plan-selector {
+		margin-bottom: 10px;
 	}
 </style>

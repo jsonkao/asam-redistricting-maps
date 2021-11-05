@@ -53,7 +53,7 @@
 					? pct(b, 0)
 					: breaks[breaks.length - 1] > 1000
 					? money(b)
-					: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? ' Asian' : '')}
+					: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? '+ Asian' : '')}
 			</p>
 		{/each}
 	</div>

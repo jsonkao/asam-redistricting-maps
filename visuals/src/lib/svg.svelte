@@ -1,6 +1,6 @@
 <script>
 	import { fade } from 'svelte/transition';
-	import { id, D, xor } from '$lib/utils';
+	import { id, D } from '$lib/utils';
 	import { focusDistricts } from '$lib/constants';
 	import { mesh as topoMesh } from 'topojson-client';
 
@@ -16,9 +16,8 @@
 		metric,
 		period,
 		tractVars,
-		showComms,
 		drawings,
-		showPlans,
+		panels,
 		plan,
 		points = [],
 		tractMesh,
@@ -92,7 +91,7 @@
 			<path class="mesh-bg" d={tractVars.includes(metric) ? tractMesh : bgMesh} />
 		{/if}
 
-		{#if showComms}
+		{#if panels.includes('communities')}
 			<g in:fade out:fade>
 				{#each drawings as { outline }}
 					<path class="mesh-community" d={outline} />
@@ -100,7 +99,7 @@
 			</g>
 		{/if}
 
-		{#if showPlans && !changingLines}
+		{#if panels.includes('plans') && !changingLines}
 			<g in:fade out:fade>
 				<path
 					class="mesh-district"
@@ -119,7 +118,7 @@
 			</g>
 		{/if}
 
-		{#if showPlans || changingLines}
+		{#if panels.includes('plans') || changingLines}
 			<g class="labels" in:fade out:fade>
 				{#each points as { properties: p, geometry: { coordinates: [x, y] } }}
 					{#if plan in p && (!showFocusDistricts || (showFocusDistricts && focuses.includes(p[plan])))}
@@ -167,7 +166,8 @@
 	svg {
 		margin-left: var(--control-width);
 		display: block;
-		width: calc(100% - var(--control-width) * 1.45);
+		width: calc(100% - var(--control-width));
+		overflow-x: visible;
 	}
 
 	svg path.head {

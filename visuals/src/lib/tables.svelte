@@ -6,9 +6,9 @@
 		stats,
 		groups,
 		changingLines,
-		idealValues,
-		drawings,
-		delDrawing;
+		idealValues;
+	export let drawings = [];
+	export let delDrawing = undefined;
 
 	export let type = 'districts';
 </script>
