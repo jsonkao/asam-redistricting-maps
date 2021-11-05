@@ -6,7 +6,7 @@
 
 {#if showModal}
   <div class="modal" in:fade out:fade>
-    <a href="">Click here</a> to see a video tutorial of this website!
+    <a href="https://youtu.be/dU5a4PRSF14" target="_blank">Click here</a> to see a video tutorial of this website.
     <button on:click={closeModal}>Close message.</button>
   </div>
 {/if}
