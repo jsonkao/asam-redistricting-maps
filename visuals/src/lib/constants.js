@@ -48,7 +48,7 @@ export const views = {
 	// 'South Brooklyn': [20, 760, 500, 426],
 	'Lower Manhattan': [80, 430, 500, 600],
 	Queens: [200, 290, 775, 600],
-	'All of NYC': [0, 0, 975, 1220]
+	'All of NYC': [20, 0, 975, 1220]
 };
 
 export const focusDistricts = {

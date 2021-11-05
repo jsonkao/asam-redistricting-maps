@@ -2,7 +2,7 @@ PLANS = senate_letters senate_names congress_letters congress_names assembly_let
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
 # xmin, ymin, xmax, ymax
-BROOKLYN_VIEWRECT = 35,670,685,1190
+BROOKLYN_VIEWRECT = 20,670,620,1190
 
 #
 # PLANS for web
