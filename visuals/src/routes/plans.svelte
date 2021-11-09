@@ -76,7 +76,6 @@
 				const visibility = p === plan ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
-				console.log(p, visibility);
 			});
 		}
 	}

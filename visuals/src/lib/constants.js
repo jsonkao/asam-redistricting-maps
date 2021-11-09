@@ -17,7 +17,7 @@ export const variablesLong = {
 	asiaentry: 'Dominant entry period for Asian families',
 	workers: 'Proportion of workers who take public transportation',
 	cvap: 'Citizen voting age population by race',
-	pop: 'Population by race'
+	pop: 'Population by race / 人口划分: 各种族群'
 };
 
 export const seqColors = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26'] || [
@@ -42,11 +42,10 @@ export const idealValues = {
 };
 
 export const views = {
-	// Chinatown: [80, 500, 300, 220],
-	// 'Chinatown Wide': [80, 430, 500, 440],
+	Chinatown: [80, 500, 300, 220],
+	'Chinatown Wide': [80, 430, 500, 600],
 	Brooklyn: [20, 670, 600, 520],
 	// 'South Brooklyn': [20, 760, 500, 426],
-	'Lower Manhattan': [80, 430, 500, 600],
 	Queens: [200, 290, 775, 600],
 	'All of NYC': [20, 0, 975, 1220]
 };
@@ -59,3 +58,8 @@ export const focusDistricts = {
 	senate_letters: 'G AA Q AC'.split(' '),
 	senate_names: 'SNSTPRK BAYGRAVES MADMID STATENCONEY FLATBUSH'.split(' ')
 };
+
+if (typeof window === 'undefined') {
+	const [x, y, w, h] = views[Object.keys(views)[0]];
+	console.log(`${x},${y},${x + w},${y + h}`);
+}

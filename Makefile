@@ -2,7 +2,7 @@ PLANS = senate_letters senate_names congress_letters congress_names assembly_let
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
 # xmin, ymin, xmax, ymax
-BROOKLYN_VIEWRECT = 20,670,620,1190
+FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 #
 # PLANS for web
@@ -10,8 +10,7 @@ BROOKLYN_VIEWRECT = 20,670,620,1190
 
 visuals/static/points.json: visuals/static/output.topojson Makefile
 	mapshaper $< \
-	-target 1 \
-	-drop \
+	-drop target=census,streets \
 	-merge-layers force target=* \
 	-points inner \
 	-each "this.coordinates = congress_letters === 'J' ? [65, 715] : this.coordinates" \
@@ -22,13 +21,13 @@ visuals/static/points.json: visuals/static/output.topojson Makefile
 
 output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 
-visuals/static/output_assembly_senate.topojson: visuals/static/output.topojson
-	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names
+visuals/static/output_assembly_senate_unity.topojson: visuals/static/output.topojson
+	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,assembly_unity,senate,senate_letters,senate_names
 
 # Prioritizes BGs in initial viewbox
-visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
+visuals/static/output_census.topojson: visuals/static/output.topojson visuals/src/lib/constants.js
 	mapshaper $< \
-	-rectangle bbox=$(BROOKLYN_VIEWRECT) name=rect \
+	-rectangle bbox=$(FIRST_VIEWRECT) name=rect \
 	-each view=1 \
 	-target census \
 	-join rect \
@@ -39,14 +38,22 @@ visuals/static/output_census.topojson: visuals/static/output.topojson Makefile
 visuals/static/output_congress.topojson: visuals/static/output.topojson
 	mapshaper $< -o $@ target=congress,congress_letters,congress_names
 
-visuals/static/output_streets.topojson: visuals/static/output.topojson Makefile
+visuals/static/output_streets.topojson: visuals/static/output.topojson
 	mapshaper $< -o $@ target=streets
 
-visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson
+mapping/output.shp: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson
+	mapshaper -i $^ combine-files \
+	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
+	-target '*' \
+	-clean \
+	-o $@
+
+visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson
 	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
 	-proj aea \
-	-simplify 22% \
+	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
+	-target '*' \
 	-clean \
 	-o - format=topojson width=975 \
 	| python3 preprocess.py -compress-topo \
@@ -129,6 +136,7 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-join plans/congress.geojson largest-overlap \
 	-join plans/congress_letters.geojson largest-overlap \
 	-join plans/congress_names.geojson largest-overlap \
+	-join unity/assembly_unity.geojson largest-overlap \
 	-o bbox $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
@@ -139,6 +147,18 @@ mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
 mapping/tl_2021_36_bg.zip:
 	mkdir -p mapping
 	curl -L https://www2.census.gov/geo/tiger/TIGER2021/BG/tl_2021_36_bg.zip -o $@
+
+#
+# UNITY MAPS
+# - "unity/UnityMappingAssemblyDistrict 2021-11-04.json" was manually downloaded; spaces manually replaced with underscores
+
+unity/assembly_unity.geojson: unity/UnityMappingAssemblyDistrict_2021-11-04.json
+	jq 'del(.name, .map_layer_type, .bounds, .center, .zoom, .median_zoom, .count, .property_names)' $< \
+	| mapshaper -i - \
+	-filter 'District !== null' \
+	-filter-fields District \
+	-rename-fields assembly_unity=District \
+	-o $@
 
 #
 # STREETS

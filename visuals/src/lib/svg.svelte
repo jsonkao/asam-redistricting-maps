@@ -34,6 +34,7 @@
 		viewCutoff,
 		showOnlyFocusDistricts,
 		showStreets,
+		presentationMode,
 		streets;
 
 	$: focuses = focusDistricts[plan];
@@ -61,7 +62,7 @@
 </script>
 
 {#if streetHighlight}
-	<p class="street-inspector" style="left: {streetHighlight.x}px; top: calc({streetHighlight.y}px - 1em)">
+	<p class="street-inspector" style="left: {streetHighlight.x}px; top: calc({streetHighlight.y}px - 1.2em)">
 		{streetHighlight.label}
 	</p>
 {/if}
@@ -70,7 +71,7 @@
 	viewBox={viewBox.join(' ')}
 	on:mousedown={startDrag}
 	on:mouseup={endDrag}
-	style="--font-size: {labelSize || 0.8}em"
+	style="--font-size: {labelSize || 0.8}em; --mesh-thin: {presentationMode ? 0.6 : 0.2}; --mesh-thick: {presentationMode ? 2.2 : 1.1};"
 >
 	<g class="block-groups">
 		{#each data as f, i (id(f))}
@@ -201,16 +202,16 @@
 
 	.mesh-bg {
 		stroke: #fff;
-		stroke-width: 0.2;
+		stroke-width: var(--mesh-thin);
 	}
 
 	.mesh-district {
 		stroke: black;
-		stroke-width: 1.1;
+		stroke-width: var(--mesh-thick);
 	}
 
 	.meshes path.mesh-onhover {
-		stroke-width: 2.5;
+		stroke-width: calc(var(--mesh-thick) * 2.3);
 	}
 
 	.mesh-community {
@@ -241,7 +242,7 @@
 	}
 
 	.street-inspector {
-		font-size: .8em;
+		font-size: 1em;
 		background: #fff;
 		margin: 0;
 		position: absolute;

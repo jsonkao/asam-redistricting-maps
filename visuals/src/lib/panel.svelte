@@ -8,7 +8,11 @@
 <div class="panel">
 	<h3>
 		<button on:click={() => togglePanel(panelName)}>
-			{panelName === 'plans' ? 'Districts and plans' : capitalize(panelName)}
+			{panelName === 'plans'
+				? 'Districts / 区域划分'
+				: panelName === 'views'
+				? 'Views / 选择区'
+				: capitalize(panelName)}
 			{panels.includes(panelName) ? '↑' : '↓'}
 		</button>
 		<slot name="title" />

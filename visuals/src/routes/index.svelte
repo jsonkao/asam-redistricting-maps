@@ -95,7 +95,6 @@
 		pluralityVars,
 		idToIndex;
 
-	let panels = [];
 	let showStreets, showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
@@ -105,22 +104,24 @@
 	let drawings = [];
 	let aggregates = [];
 	let stats = {};
-
 	let presentationMode = false;
 
-	let plan = 'assembly';
-	let bgMesh, plans, congressPlans, points, streets;
+	let panels = ['plans', 'views']
 
-	let containerFont = 18;
+	let plan = 'assembly';
+	let bgMesh, congressPlans, points, streets;
+	let plans;
+
+	let containerFont = presentationMode ? 24 : 18;
 	let clientWidth;
-	let viewCutoff = 3144; // manually copied from make/mapshaper output
+	let viewCutoff = 870; // manually copied from make/mapshaper output
 	let view = Object.keys(views)[0];
 	$: viewBox = views[view];
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
 	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
-	const closeModal = () => showModal = false;
+	const closeModal = () => (showModal = false);
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
@@ -128,7 +129,7 @@
 		points = promises[1];
 		viewCutoff = data.length;
 
-		showModal = true;
+		showModal = !presentationMode;
 	});
 
 	let lastDistrict;
@@ -294,7 +295,9 @@
 	const togglePanel = (p) =>
 		(panels = panels.includes(p) ? panels.filter((x) => x !== p) : [...panels, p]);
 
-	$: labelSize = (plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2]);
+	$: labelSize =
+		((plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2])) *
+		(presentationMode ? 1.24 : 1.1);
 
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
@@ -325,6 +328,7 @@
 		if (key === '-') containerFont -= 2;
 		if (key === 'v') showMoreOptions = !showMoreOptions;
 		if (key === 'f') showOnlyFocusDistricts = !showOnlyFocusDistricts;
+		if (key === 's') showOnlyFocusDistricts = !showOnlyFocusDistricts;
 	}
 </script>
 
@@ -343,7 +347,7 @@
 	<div class="controls">
 		<select
 			bind:value={variable}
-			style="width: {staticVars.includes(variable) ? 'auto' : 'calc(var(--control-width) - 20px)'}"
+			style="width: {staticVars.includes(variable) ? 'auto' : 'calc(var(--control-width) + 45px)'}"
 		>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
@@ -398,10 +402,18 @@
 					<select bind:value={plan}>
 						{#each ['assembly', 'senate', 'congress'] as scope}
 							<optgroup label={capitalize(scope)}>
-								{#each ['', '_letters', '_names'] as proposal}
-									<option value={scope + proposal}>{planDesc(scope + proposal)}</option>
+								{#each ['', '_letters', '_names', '_unity'] as proposal}
+									<option
+										value={scope + proposal}
+										disabled={scope + proposal === 'senate_unity' ||
+											scope + proposal === 'congress_unity' || scope + proposal === 'assembly_unity'}
+									>
+										{planDesc(scope + proposal) +
+											(scope + proposal === 'senate_unity' || scope + proposal === 'congress_unity' || scope + proposal === 'assembly_unity'
+												? ' (soon)'
+												: '')}
+									</option>
 								{/each}
-								<option disabled>Unity Map (soon)</option>
 							</optgroup>
 						{/each}
 					</select>
@@ -432,15 +444,17 @@
 			</div>
 		</Panel>
 
-		<Panel panelName="communities" {panels} {togglePanel}>
-			<button slot="title" on:click={() => (drawing = true)}>+</button>
-			<div slot="body" class="community">
-				<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
-				<button on:click={save} style="font-size: 13px;">
-					<b>[SAVE]</b>
-				</button>
-			</div>
-		</Panel>
+		{#if !presentationMode}
+			<Panel panelName="communities" {panels} {togglePanel}>
+				<button slot="title" on:click={() => (drawing = true)}>+</button>
+				<div slot="body" class="community">
+					<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
+					<button on:click={save} style="font-size: 13px;">
+						<b>[SAVE]</b>
+					</button>
+				</div>
+			</Panel>
+		{/if}
 	</div>
 
 	<Svg
@@ -475,15 +489,18 @@
 		{showOnlyFocusDistricts}
 		{showStreets}
 		{streets}
+		{presentationMode}
 	/>
 
-	<div class="footer">
-		<p>
-			Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu"
-				>jason.kao@columbia.edu</a
-			>.
-		</p>
-	</div>
+	{#if !presentationMode}
+		<div class="footer">
+			<p>
+				Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu"
+					>jason.kao@columbia.edu</a
+				>.
+			</p>
+		</div>
+	{/if}
 </div>
 
 <style>

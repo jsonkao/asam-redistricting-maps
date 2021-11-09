@@ -40,7 +40,7 @@
 	<div
 		class="color-legend"
 		class:pctasian={dynamicVars.includes(variable)}
-		style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 2.5em);"
+		style="grid-template-columns: repeat({dynamicVars.includes(variable) ? 5 : 6}, 2.9em);"
 	>
 		{#each breaks as b, i}
 			<div
@@ -49,11 +49,11 @@
 		{/each}
 		{#each breaks as b, i}
 			<p>
-				{(breaks[breaks.length - 1] < 1
+				{@html (breaks[breaks.length - 1] < 1
 					? pct(b, 0)
 					: breaks[breaks.length - 1] > 1000
 					? money(b)
-					: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? '+ Asian' : '')}
+					: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? '+ Asian <br/>(亚裔人口)' : '')}
 			</p>
 		{/each}
 	</div>
@@ -81,14 +81,14 @@
 	}
 
 	.color-legend {
-		margin: 19px 0;
+		margin: 1.5em 0;
 		display: grid;
 		grid-template-rows: 12px 1fr;
 		row-gap: 4px;
 	}
 
 	.color-legend p {
-		font-size: 0.8em;
+		font-size: 1em;
 		text-align: center;
 		line-height: 1;
 		position: relative;
@@ -102,6 +102,7 @@
 
 	.color-legend.pctasian p:last-child {
 		white-space: pre;
+		line-height: 1.1;
 	}
 
 	.plurality-legend {
