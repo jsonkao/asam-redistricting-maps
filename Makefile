@@ -8,6 +8,8 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 # PLANS for web
 #
 
+main: visuals/static/output.topojson visuals/static/output_census.topojson visuals/static/points.json
+
 visuals/static/points.json: visuals/static/output.topojson Makefile
 	mapshaper $< \
 	-drop target=census,streets \
@@ -22,7 +24,7 @@ visuals/static/points.json: visuals/static/output.topojson Makefile
 output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 
 visuals/static/output_assembly_senate_unity.topojson: visuals/static/output.topojson
-	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,assembly_unity,senate,senate_letters,senate_names
+	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,assembly_unity,senate,senate_letters,senate_names,senate_unity
 
 # Prioritizes BGs in initial viewbox
 visuals/static/output_census.topojson: visuals/static/output.topojson visuals/src/lib/constants.js
@@ -48,7 +50,7 @@ mapping/output.shp: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson
 	-clean \
 	-o $@
 
-visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson
+visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
 	mapshaper -i $^ combine-files \
 	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
 	-proj aea \
@@ -137,6 +139,7 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-join plans/congress_letters.geojson largest-overlap \
 	-join plans/congress_names.geojson largest-overlap \
 	-join unity/assembly_unity.geojson largest-overlap \
+	-join unity/senate_unity.geojson largest-overlap \
 	-o bbox $@
 
 mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
@@ -151,6 +154,12 @@ mapping/tl_2021_36_bg.zip:
 #
 # UNITY MAPS
 # - "unity/UnityMappingAssemblyDistrict 2021-11-04.json" was manually downloaded; spaces manually replaced with underscores
+
+unity/senate_unity.geojson: unity/Unity_Mapping_Senate_Districts_2021-11-04.shp
+	mapshaper $< \
+	-filter-fields DISTRICT \
+	-rename-fields senate_unity=DISTRICT \
+	-o $@
 
 unity/assembly_unity.geojson: unity/UnityMappingAssemblyDistrict_2021-11-04.json
 	jq 'del(.name, .map_layer_type, .bounds, .center, .zoom, .median_zoom, .count, .property_names)' $< \

@@ -106,7 +106,7 @@
 	let stats = {};
 	let presentationMode = false;
 
-	let panels = ['plans', 'views']
+	let panels = ['plans', 'views'];
 
 	let plan = 'assembly';
 	let bgMesh, congressPlans, points, streets;
@@ -403,16 +403,11 @@
 						{#each ['assembly', 'senate', 'congress'] as scope}
 							<optgroup label={capitalize(scope)}>
 								{#each ['', '_letters', '_names', '_unity'] as proposal}
-									<option
-										value={scope + proposal}
-										disabled={scope + proposal === 'senate_unity' ||
-											scope + proposal === 'congress_unity' || scope + proposal === 'assembly_unity'}
-									>
-										{planDesc(scope + proposal) +
-											(scope + proposal === 'senate_unity' || scope + proposal === 'congress_unity' || scope + proposal === 'assembly_unity'
-												? ' (soon)'
-												: '')}
-									</option>
+									{#if scope + proposal !== 'congress_unity'}
+										<option value={scope + proposal}>
+											{planDesc(scope + proposal)}
+										</option>
+									{/if}
 								{/each}
 							</optgroup>
 						{/each}
