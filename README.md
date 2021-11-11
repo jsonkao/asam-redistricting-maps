@@ -10,10 +10,5 @@ The Makefile directs all the data downloading and transformation.
 
 ## TODOS
 
-Mapbox (see [page](https://www.nytimes.com/interactive/2021/upshot/2020-election-map.html))
-* The `https://api.mapbox.com/styles/v1/nytgraphics/ckk2oe4ck3n0o17p4lypsp2pu?access_token=pk.eyJ1Ijoibnl0Z3JhcGhpY3MiLCJhIjoiY2pka3N3czNiMDA4NTJxb2Q3Yno3OWl5bSJ9.4-IvzzJoY5grTlfFoukZag` request contains all NYT styles
-* `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8.json?secure&access_token=pk.eyJ1Ijoibnl0Z3JhcGhpY3MiLCJhIjoiY2pka3N3czNiMDA4NTJxb2Q3Yno3OWl5bSJ9.4-IvzzJoY5grTlfFoukZag` has other settings
-* `https://api.mapbox.com/v4/nytgraphics.precincts2020counties.json?secure&access_token=pk.eyJ1Ijoibnl0Z3JhcGhpY3MiLCJhIjoiY2pka3N3czNiMDA4NTJxb2Q3Yno3OWl5bSJ9.4-IvzzJoY5grTlfFoukZag` seems like polygons are rendered by custom vector tiles
-
 Census blocks
 * Data isn't eprfect, but that's how you get the exact data the people are using to draw the maps.
