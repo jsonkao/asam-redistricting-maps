@@ -1,17 +1,26 @@
 <script context="module">
 	import { base } from '$app/paths';
+	import { feature } from 'topojson-client';
+	import { unpackAttributes } from '$lib/utils';
+
 	export async function load({ fetch }) {
 		const req = await fetch(`${base}/plans.topojson`);
-		return { props: { topoData: await req.json() } };
+		const req1 = await fetch(`${base}/output_census_wgs84.topojson`);
+
+		const topo = await req1.json();
+		const obj = unpackAttributes(topo.objects.census);
+		const census = feature(topo, obj);
+
+		return { props: { topoData: await req.json(), census } };
 	}
 </script>
 
 <script>
-	import { feature } from 'topojson-client';
 	import { onMount } from 'svelte';
 	import { planDesc } from '$lib/utils';
+	import { seqColors } from '$lib/constants';
 
-	export let topoData;
+	export let topoData, census;
 
 	let map, loaded;
 
@@ -23,32 +32,60 @@
 		'senate_letters',
 		'senate_names'
 	];
+	const breaksCache = {
+		pop: [0, 0.1, 0.2, 0.4, 0.6],
+		cvap: [0, 0.1, 0.2, 0.4, 0.6]
+	};
+
+	const metric = 'pop20';
+	const variable = 'pop';
+	function color({ properties: d }) {
+		if (!d.ALAND) return 'rgba(0, 0, 0, 0)';
+		const total = d[`${metric}_total`];
+
+		if (total <= 10) return 'rgba(0, 0, 0, 0)';
+		const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
+
+		const breaks = breaksCache[variable];
+		for (let i = 1; i < breaks.length; i++) {
+			if (p('asian') < breaks[i]) return seqColors[i - 1];
+		}
+		return seqColors[breaks.length - 1];
+	}
 
 	onMount(() => {
 		mapboxgl.accessToken =
-			'pk.eyJ1IjoiaGFvaGFvbTEiLCJhIjoiY2tlenMwMDdhMDh5dDJxcWk1MXRpNWdrcSJ9.WJ50sc0kycv1demj-0tlMQ';
+			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
 		map = new mapboxgl.Map({
-			container: 'map', // container ID
-			style: 'mapbox://styles/mapbox/light-v10', // style URL
+			container: 'map',
+			style: 'mapbox://styles/jsonkao/ckvnu5tpy6coj14uizvyf1wuf/draft',
 			center: [-73.967, 40.72],
 			zoom: 12 // starting zoom
 		});
 
 		map.on('load', async () => {
+			const layers = map.getStyle().layers;
+			map.addSource('census', { type: 'geojson', data: census });
+			const matchExp = ['match', ['get', 'GEOID']];
+			census.features.forEach((f) => {
+				matchExp.push(f.properties.GEOID, color(f));
+			});
+			matchExp.push('rgba(0, 0, 0, 0)');
+			map.addLayer({
+				id: 'census',
+				type: 'fill',
+				source: 'census',
+				paint: {
+					'fill-color': matchExp
+				}
+			}, 'parks');
+			console.log(layers)
+
 			plans.forEach((k) => {
 				const data = feature(topoData, topoData.objects[k]);
 				map.addSource(k, {
 					type: 'geojson',
 					data
-				});
-				map.addLayer({
-					id: k + '_fill',
-					type: 'fill',
-					source: k, // reference the data source
-					paint: {
-						'fill-color': '#0080ff', // blue color fill
-						'fill-opacity': 0.1
-					}
 				});
 				map.addLayer({
 					id: k + '_outline',
@@ -68,13 +105,12 @@
 		});
 	});
 
-	let plan = plans[0];
+	let plan;
 
 	$: {
 		if (loaded) {
 			plans.forEach((p) => {
 				const visibility = p === plan ? 'visible' : 'none';
-				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
 			});
 		}

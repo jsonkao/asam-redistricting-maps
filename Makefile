@@ -63,6 +63,14 @@ visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/se
 	-clean \
 	-o $@
 
+visuals/static/output_census_wgs84.topojson: mapping/census.geojson
+	mapshaper $< \
+	-simplify 22% \
+	-clean \
+	-o - format=topojson \
+	| python3 preprocess.py -compress-topo \
+	> $@
+
 # For Mapbox
 visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson
 	mapshaper -i $^ combine-files \

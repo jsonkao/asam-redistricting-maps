@@ -15,7 +15,6 @@ specifiers:
   point-in-polygon: ^1.1.0
   prettier: ^2.4.1
   prettier-plugin-svelte: ^2.4.0
-  rbush: ^3.0.1
   svelte: ^3.42.6
   topojson-client: ^3.1.0
 
@@ -26,12 +25,11 @@ dependencies:
   d3-polygon: 3.0.1
   mapbox-gl: 2.5.1
   point-in-polygon: 1.1.0
-  rbush: 3.0.1
   topojson-client: 3.1.0
 
 devDependencies:
   '@sveltejs/adapter-static': 1.0.0-next.21
-  '@sveltejs/kit': 1.0.0-next.192_svelte@3.44.0
+  '@sveltejs/kit': 1.0.0-next.196_svelte@3.44.0
   eslint: 7.32.0
   eslint-config-prettier: 8.3.0_eslint@7.32.0
   eslint-plugin-svelte3: 3.2.1_eslint@7.32.0+svelte@3.44.0
@@ -150,8 +148,8 @@ packages:
     resolution: {integrity: sha512-B4+QoUVAaANKx+mHntG8SqF45zbj3Ct4Akg/cGauo6COyfKZRhO5OsMa+wPuT2TKJBZC4eEDK0p+p9nyQBkxKQ==}
     dev: true
 
-  /@sveltejs/kit/1.0.0-next.192_svelte@3.44.0:
-    resolution: {integrity: sha512-8LyPeEwxzMFMMr05I27j77qgvBdw92eVCH+W8+nW8kA7dkfA1e38GZXEb3qshd0Jez2Cng8MAzVMoETzGaQcng==}
+  /@sveltejs/kit/1.0.0-next.196_svelte@3.44.0:
+    resolution: {integrity: sha512-z7sA/2/3Il5biibjPXCYXJC11TyFhgCvMaJvvbtMnu2l3EmOmJBMS+r2djGptzfFsugSVNwGQFn8+ldWQWq3jA==}
     engines: {node: '>=14.13'}
     hasBin: true
     peerDependencies:
