@@ -8,9 +8,10 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
-		const topoData = await (await fetch(`${base}/output_census.topojson`)).json();
+		const topoData = await (await fetch(`${base}/output_census_wgs84.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
-		const data = feature(topoData, obj).features.map(reduceCoordinatePrecision);
+		const census = feature(topoData, obj);
+		const data = census.features//.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['pop', 'cvap'];
@@ -43,7 +44,9 @@
 				staticVars,
 				idToIndex,
 				tractVars: ['asiaentry', 'workers'],
-				pluralityVars: ['asiaentry'] // Aside from race
+				pluralityVars: ['asiaentry'], // Aside from race
+				census,
+				plansTopo: await (await fetch(`${base}/plans.topojson`)).json()
 			}
 		};
 	}
@@ -84,10 +87,13 @@
 	import Tables from '$lib/tables.svelte';
 	import Panel from '$lib/panel.svelte';
 	import Modal from '$lib/modal.svelte';
+	import Map from '$lib/map.svelte';
 
 	export let topoData,
 		obj,
 		neighbors,
+		census,
+		plansTopo,
 		data,
 		dynamicVars,
 		staticVars,
@@ -172,23 +178,23 @@
 	let showPluralities = false;
 
 	function color({ properties: d }) {
-		if (!d.ALAND) return '#fff';
+		if (!d.ALAND) return 'rgba(0, 0, 0, 0)';
 		const total = d[`${metric}_total`];
 
 		if (pluralityVars.includes(metric)) {
 			const p = (g) => d[`${metric}_${g}`];
-			if (p(periods[0]) === null) return '#eee';
+			if (p(periods[0]) === null) return 'rgba(0, 0, 0, 0)';
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
 			return schemeBlues[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
-			if (!isNum(getValue(d))) return '#eee';
-			if (total <= 10) return '#fff';
+			if (!isNum(getValue(d))) return 'rgba(0, 0, 0, 0)';
+			if (total <= 10) return 'rgba(0, 0, 0, 0)';
 			for (let i = 1; i < breaks.length; i++) {
 				if (getValue(d) < breaks[i]) return schemeBlues[i];
 			}
 			return schemeBlues[breaks.length - 1];
 		} else {
-			if (total <= 10) return '#fff';
+			if (total <= 10) return 'rgba(0, 0, 0, 0)';
 			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 
 			if (showPluralities) {
@@ -347,7 +353,9 @@
 	<div class="controls">
 		<select
 			bind:value={variable}
-			style="width: {staticVars.includes(variable) ? 'auto' : 'calc(var(--control-width) + 45px)'}"
+			style="width: {staticVars.includes(variable)
+				? 'auto'
+				: 'calc(var(--control-width) + 45px * 0)'}"
 		>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
@@ -434,10 +442,10 @@
 					{/each}
 				</select>
 				{#if showStreetsCheckbox}
-				<label>
-					<input type="checkbox" bind:checked={showStreets} />
-					Inspect streets
-				</label>
+					<label>
+						<input type="checkbox" bind:checked={showStreets} />
+						Inspect streets
+					</label>
 				{/if}
 			</div>
 		</Panel>
@@ -455,8 +463,10 @@
 		{/if}
 	</div>
 
-	<Svg
+	<Map
 		{viewBox}
+		{plansTopo}
+		{census}
 		{labelSize}
 		{draggedBgs}
 		{data}
@@ -518,7 +528,11 @@
 		position: fixed;
 		max-width: var(--control-width);
 		top: 22px;
-		padding-left: 15px;
+		left: 22px;
+		padding: 15px;
+		background: #fff;
+		z-index: 1;
+		box-shadow: 0px 2px 5px #0006;
 	}
 
 	.community {
