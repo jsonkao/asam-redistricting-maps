@@ -1,17 +1,18 @@
 <script context="module">
 	import { base } from '$app/paths';
 	import { feature } from 'topojson-client';
-	import { unpackAttributes } from '$lib/utils';
+	import { unpackAttributes, getPoints } from '$lib/utils';
 
 	export async function load({ fetch }) {
 		const req = await fetch(`${base}/plans.topojson`);
 		const req1 = await fetch(`${base}/output_census_wgs84.topojson`);
+		// const req2 = await (await getPoints()).json();
 
 		const topo = await req1.json();
 		const obj = unpackAttributes(topo.objects.census);
 		const census = feature(topo, obj);
 
-		return { props: { topoData: await req.json(), census } };
+		return { props: { topoData: await req.json(), census, /*points: req2*/ } };
 	}
 </script>
 
@@ -20,7 +21,7 @@
 	import { planDesc } from '$lib/utils';
 	import { seqColors } from '$lib/constants';
 
-	export let topoData, census;
+	export let topoData, census, points;
 
 	let map, loaded;
 
@@ -28,9 +29,11 @@
 		'assembly',
 		'assembly_letters',
 		'assembly_names',
+		'assembly_unity',
 		'senate',
 		'senate_letters',
-		'senate_names'
+		'senate_names',
+		'senate_unity'
 	];
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
@@ -71,22 +74,32 @@
 				matchExp.push(f.properties.GEOID, color(f));
 			});
 			matchExp.push('rgba(0, 0, 0, 0)');
-			map.addLayer({
-				id: 'census',
-				type: 'fill',
-				source: 'census',
-				paint: {
-					'fill-color': matchExp
-				}
-			}, 'parks');
-			console.log(layers)
+			map.addLayer(
+				{
+					id: 'census',
+					type: 'fill',
+					source: 'census',
+					paint: {
+						'fill-color': matchExp
+					}
+				},
+				'parks'
+			);
+			console.log(layers);
 
 			plans.forEach((k) => {
 				const data = feature(topoData, topoData.objects[k]);
 				map.addSource(k, {
 					type: 'geojson',
 					data
-				});
+				});/*
+				map.addSource(k + '_labels', {
+					type: 'geojson',
+					data: {
+						type: 'FeatureCollection',
+						features: points.filter(p => p.properties[k])
+					}
+				});*/
 				map.addLayer({
 					id: k + '_outline',
 					type: 'line',
@@ -97,6 +110,24 @@
 						'line-width': 1
 					}
 				});
+				map.addLayer({
+					id: k + '_fill',
+					type: 'fill',
+					source: k,
+					layout: {},
+					paint: {
+						'fill-color': '#000000',
+						'fill-opacity': 0
+					}
+				});/*
+				map.addLayer({
+					id: k + '_labels',
+					type: 'symbol',
+					source: k + '_labels',
+					layout: {
+						'text-justify': 'auto',
+					}
+				});*/
 				map.on('click', k + '_fill', (e) => {
 					new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(e.features[0].properties[k]).addTo(map);
 				});
@@ -112,6 +143,8 @@
 			plans.forEach((p) => {
 				const visibility = p === plan ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
+				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
+				// map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 			});
 		}
 	}

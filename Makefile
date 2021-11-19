@@ -72,7 +72,7 @@ visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	> $@
 
 # For Mapbox
-visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson
+visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
 	mapshaper -i $^ combine-files \
 	-clean \
 	-simplify 22% \

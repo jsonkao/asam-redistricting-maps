@@ -95,7 +95,7 @@
 		pluralityVars,
 		idToIndex;
 
-	let showStreets, showModal;
+	let showStreets, showModal, showStreetsCheckbox;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
 	let drawing, dragging, changingLines;
@@ -374,7 +374,7 @@
 
 				{#if dynamicVars.includes(variable)}
 					<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
-						Show {showPluralities ? 'pct. asian' : 'pluralities'}
+						Show {showPluralities ? 'pct. asian' : 'all race and ethniticies'}
 					</button>
 				{/if}
 			</div>
@@ -421,6 +421,7 @@
 					{groups}
 					{changingLines}
 					{idealValues}
+					{variable}
 				/>
 			</div>
 		</Panel>
@@ -432,10 +433,12 @@
 						<option value={v}>{v}</option>
 					{/each}
 				</select>
+				{#if showStreetsCheckbox}
 				<label>
 					<input type="checkbox" bind:checked={showStreets} />
 					Inspect streets
 				</label>
+				{/if}
 			</div>
 		</Panel>
 

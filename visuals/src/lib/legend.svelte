@@ -1,6 +1,6 @@
 <script>
 	import { capitalize, pct, money } from '$lib/utils';
-	import { schemeBlues, seqColors } from '$lib/constants';
+	import { schemeBlues, seqColors, translate } from '$lib/constants';
 
 	export let groups,
 		levels,
@@ -53,7 +53,10 @@
 					? pct(b, 0)
 					: breaks[breaks.length - 1] > 1000
 					? money(b)
-					: b) + (dynamicVars.includes(variable) && i === breaks.length - 1 ? '+ Asian <br/>(亚裔人口)' : '')}
+					: b) +
+					(dynamicVars.includes(variable) && i === breaks.length - 1
+						? '+ Asian' + (translate ? '<br/>(亚裔人口)' : '')
+						: '')}
 			</p>
 		{/each}
 	</div>
@@ -98,6 +101,8 @@
 	.color-legend.pctasian p {
 		text-align: left;
 		right: 7px;
+		font-size: .86em;
+		top: 2px;
 	}
 
 	.color-legend.pctasian p:last-child {

@@ -9,6 +9,8 @@ export const levels = ['44', '99', 'ee'];
 export const groups = ['asian', 'black', 'hispanic', 'white'];
 export const periods = ['1990_earlier', '1990_1999', '2000_2009', '2010_later'];
 
+export const translate = false;
+
 export const variablesLong = {
 	hhlang: 'Proportion of households that speak an Asian language and are LEP',
 	income: 'Median household income',
@@ -17,7 +19,7 @@ export const variablesLong = {
 	asiaentry: 'Dominant entry period for Asian families',
 	workers: 'Proportion of workers who take public transportation',
 	cvap: 'Citizen voting age population by race',
-	pop: 'Population by race / 人口划分: 各种族群'
+	pop: 'Population by race' + (translate ? ' / 人口划分: 各种族群' : ''),
 };
 
 export const seqColors = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26'] || [
@@ -42,11 +44,12 @@ export const idealValues = {
 };
 
 export const views = {
+	'Queens, Western': [250, 320, 400, 350],
+	Queens: [200, 290, 775, 600],
 	Chinatown: [80, 500, 300, 220],
 	'Chinatown Wide': [80, 430, 500, 600],
 	Brooklyn: [20, 670, 600, 520],
 	// 'South Brooklyn': [20, 760, 500, 426],
-	Queens: [200, 290, 775, 600],
 	'All of NYC': [20, 0, 975, 1220]
 };
 

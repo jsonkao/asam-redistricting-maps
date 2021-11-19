@@ -1,5 +1,6 @@
 <script>
-	import { capitalize } from './utils';
+	import { capitalize } from './utils.js';
+	import { translate } from './constants.js';
 	import { slide } from 'svelte/transition';
 
 	export let panels, togglePanel, panelName;
@@ -9,9 +10,9 @@
 	<h3>
 		<button on:click={() => togglePanel(panelName)}>
 			{panelName === 'plans'
-				? 'Districts / 区域划分'
+				? ('Districts' + (translate ? ' / 区域划分' : ''))
 				: panelName === 'views'
-				? 'Views / 选择区'
+				? ('Views' + (translate ? ' / 选择区' : ''))
 				: capitalize(panelName)}
 			{panels.includes(panelName) ? '↑' : '↓'}
 		</button>

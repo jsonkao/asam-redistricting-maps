@@ -6,11 +6,14 @@
 		stats,
 		groups,
 		changingLines,
+		variable,
 		idealValues;
 	export let drawings = [];
 	export let delDrawing = undefined;
 
 	export let type = 'districts';
+
+	$: varLabel = variable === 'pop' ? 'Pop.' : variable.toUpperCase();
 </script>
 
 {#if type === 'districts'}
@@ -21,24 +24,16 @@
 				<table>
 					<tr>
 						<th />
-						<th>CVAP</th>
-						<th>Pop.</th>
+						<!-- <th>2010 {varLabel}</th> -->
+						<th>2020 {varLabel}</th>
 					</tr>
-					<tr>
-						<td>Asians in 2010</td>
-						<td>{pct(stats[a]['cvap10asian'])}</td>
-						<td>{pct(stats[a]['pop10asian'])}</td>
-					</tr>
-					<tr>
-						<td>Asians now</td>
-						<td>{pct(stats[a]['cvap19asian'])}</td>
-						<td>{pct(stats[a]['pop20asian'])}</td>
-					</tr>
-					<tr>
-						<td>Asian increase</td>
-						<td>{pct(stats[a]['pct_increase'])}</td>
-						<td>{pct(stats[a]['pct_increase_cvap'])}</td>
-					</tr>
+					{#each groups as grp}
+						<tr>
+							<td>{capitalize(grp)}</td>
+							<!-- <td>{pct(stats[a][variable + '10' + grp])}</td> -->
+							<td>{pct(stats[a][variable + (variable === 'pop' ? '20' : '19') + grp])}</td>
+						</tr>
+					{/each}
 				</table>
 				{#if changingLines && plan in idealValues}
 					<p class="table-footer">

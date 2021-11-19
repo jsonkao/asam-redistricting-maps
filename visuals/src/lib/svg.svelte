@@ -56,13 +56,16 @@
 
 	let districtHighlight, streetHighlight;
 
-	function handleStreetClick({ pageX: x, pageY: y }, { properties: { Label: label }}) {
+	function handleStreetClick({ pageX: x, pageY: y }, { properties: { Label: label } }) {
 		streetHighlight = { x, y, label };
 	}
 </script>
 
 {#if streetHighlight}
-	<p class="street-inspector" style="left: {streetHighlight.x}px; top: calc({streetHighlight.y}px - 1.2em)">
+	<p
+		class="street-inspector"
+		style="left: {streetHighlight.x}px; top: calc({streetHighlight.y}px - 1.2em)"
+	>
 		{streetHighlight.label}
 	</p>
 {/if}
@@ -71,7 +74,9 @@
 	viewBox={viewBox.join(' ')}
 	on:mousedown={startDrag}
 	on:mouseup={endDrag}
-	style="--font-size: {labelSize || 0.8}em; --mesh-thin: {presentationMode ? 0.6 : 0.2}; --mesh-thick: {presentationMode ? 2.2 : 1.1};"
+	style="--font-size: {labelSize || 0.8}em; --mesh-thin: {presentationMode
+		? 0.6
+		: 0.2}; --mesh-thick: {presentationMode ? 2.2 : 1.1};"
 >
 	<g class="block-groups">
 		{#each data as f, i (id(f))}
@@ -107,6 +112,21 @@
 					class:showPluralities
 					d={getMesh(plan, plans, congressPlans, showOnlyFocusDistricts)}
 				/>
+
+				{#each aggregates as a}
+					<path
+						class="mesh-onhover mesh-district"
+						d={obj &&
+							path(
+								topoMesh(topo, {
+									type: obj.type,
+									geometries: obj.geometries.filter(
+										(g) => a.split(',')[1] === ('' + g.properties[a.split(',')[0]])
+									)
+								})
+							)}
+					/>
+				{/each}
 			</g>
 		{/if}
 
@@ -156,7 +176,10 @@
 		{#if streets}
 			<g class="streets" on:mousemove={() => (streetHighlight = null)} class:showStreets>
 				{#each streets as f}
-					<path d={path(f)} on:click|preventDefault={(e) => showStreets && handleStreetClick(e, f)} />
+					<path
+						d={path(f)}
+						on:click|preventDefault={(e) => showStreets && handleStreetClick(e, f)}
+					/>
 				{/each}
 			</g>
 		{/if}
