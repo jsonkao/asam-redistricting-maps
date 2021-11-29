@@ -46,7 +46,8 @@
 				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'], // Aside from race
 				census,
-				plansTopo: await (await fetch(`${base}/plans.topojson`)).json()
+				plansTopo: await (await fetch(`${base}/plans.topojson`)).json(),
+				points: await (await fetch(`${base}/points.geojson`)).json()
 			}
 		};
 	}
@@ -99,7 +100,8 @@
 		staticVars,
 		tractVars,
 		pluralityVars,
-		idToIndex;
+		idToIndex,
+		points;
 
 	let showStreets, showModal, showStreetsCheckbox;
 	let showMoreOptions = true;
@@ -115,7 +117,7 @@
 	let panels = ['plans', 'views'];
 
 	let plan = 'assembly';
-	let bgMesh, congressPlans, points, streets;
+	let bgMesh, congressPlans, streets;
 	let plans;
 
 	let containerFont = presentationMode ? 24 : 18;
@@ -130,9 +132,9 @@
 	const closeModal = () => (showModal = false);
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
-		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
+		const promises = await Promise.all([getPlansMeshes()]);
 		plans = promises[0];
-		points = promises[1];
+		// points = promises[1];
 		viewCutoff = data.length;
 
 		showModal = !presentationMode;
@@ -434,7 +436,7 @@
 			</div>
 		</Panel>
 
-		<Panel panelName="views" {panels} {togglePanel}>
+		<!-- <Panel panelName="views" {panels} {togglePanel}>
 			<div slot="body" class="views">
 				<select bind:value={view}>
 					{#each Object.keys(views) as v}
@@ -460,7 +462,7 @@
 					</button>
 				</div>
 			</Panel>
-		{/if}
+		{/if} -->
 	</div>
 
 	<Map

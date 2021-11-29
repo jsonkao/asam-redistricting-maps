@@ -121,3 +121,17 @@ export async function getStreets() {
 	const topoData = await req.json();
 	return feature(topoData, topoData.objects.streets).features;
 }
+
+export function hexToRGB(hex) {
+	if (!hex.startsWith('#')) {
+		return hex;
+	}
+	let r = parseInt(hex.slice(1, 3), 16);
+	let g = parseInt(hex.slice(3, 5), 16);
+	let b = parseInt(hex.slice(5, 7), 16);
+	if (hex.length > 7) {
+			return "rgba(" + r + ", " + g + ", " + b + ", " + (parseInt(hex.slice(7, 9), 16) / 255) + ")";
+	} else {
+			return "rgb(" + r + ", " + g + ", " + b + ")";
+	}
+}

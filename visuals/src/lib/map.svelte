@@ -1,7 +1,7 @@
 <script>
-  import { feature } from 'topojson-client';
+	import { feature } from 'topojson-client';
 	import { onMount } from 'svelte';
-	import { planDesc } from '$lib/utils';
+	import { planDesc, hexToRGB } from '$lib/utils';
 
 	export let viewBox,
 		census,
@@ -20,7 +20,7 @@
 		drawings,
 		panels,
 		plan,
-		// points = [],
+		points,
 		tractMesh,
 		bgMesh,
 		mesh,
@@ -85,14 +85,7 @@
 				map.addSource(k, {
 					type: 'geojson',
 					data
-				}); /*
-				map.addSource(k + '_labels', {
-					type: 'geojson',
-					data: {
-						type: 'FeatureCollection',
-						features: points.filter(p => p.properties[k])
-					}
-				});*/
+				});
 				map.addLayer({
 					id: k + '_outline',
 					type: 'line',
@@ -100,7 +93,13 @@
 					layout: {},
 					paint: {
 						'line-color': '#000',
-						'line-width': 1
+						'line-width': [
+							'interpolate',
+							['exponential', 2],
+							['zoom'],
+							10, 1,
+							15, 3
+						]
 					}
 				});
 				map.addLayer({
@@ -112,20 +111,34 @@
 						'fill-color': '#000000',
 						'fill-opacity': 0
 					}
-				}); /*
+				});
+				map.addSource(k + '_labels', {
+					type: 'geojson',
+					data: {
+						type: 'FeatureCollection',
+						features: points.features.filter((p) => p.properties[k])
+					}
+				});
 				map.addLayer({
 					id: k + '_labels',
 					type: 'symbol',
 					source: k + '_labels',
 					layout: {
 						'text-justify': 'auto',
+						'text-field': ['get', k]
+					},
+					paint: {
+						'text-color': 'black'
 					}
-				});*/
-				map.on('click', k + '_fill', (e) => {
-					new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(e.features[0].properties[k]).addTo(map);
 				});
 			});
 			loaded = true;
+
+			map.on('click', function (e) {
+				const features = map.queryRenderedFeatures(e.point).filter(f => f.properties[plan]);
+				if (features.length === 0) return;
+				handleLabelClick(`${plan},${features[0].properties[plan]}`);
+			})
 		});
 	});
 
@@ -137,7 +150,7 @@
 				const visibility = p === plan ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
-				// map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
+				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);
 			});
 		}
 	}
@@ -146,10 +159,10 @@
 		if (loaded) {
 			const matchExp = ['match', ['get', 'GEOID']];
 			census.features.forEach((f) => {
-				matchExp.push(f.properties.GEOID, color(f, metric, period, showPluralities));
+				matchExp.push(f.properties.GEOID, hexToRGB(color(f, metric, period, showPluralities)));
 			});
 			matchExp.push('rgba(0, 0, 0, 0)');
-			map.setPaintProperty("census", "fill-color", matchExp);
+			map.setPaintProperty('census', 'fill-color', matchExp);
 		}
 	}
 </script>

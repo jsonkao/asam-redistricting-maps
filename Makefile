@@ -77,6 +77,11 @@ visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.g
 	-clean \
 	-simplify 22% \
 	-o $@ quantization=1e5
+visuals/static/points.geojson: visuals/static/plans.topojson
+	mapshaper $< \
+	-merge-layers force target=* \
+	-points inner \
+	-o $@
 
 #
 # PROPOSED PLANS
