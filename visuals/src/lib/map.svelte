@@ -125,10 +125,12 @@
 					source: k + '_labels',
 					layout: {
 						'text-justify': 'auto',
-						'text-field': ['get', k]
+						'text-field': ['format', ['get', k], { 'font-scale': 1.35 }]
 					},
 					paint: {
-						'text-color': 'black'
+						'text-color': '#121212',
+						'text-halo-color': '#fff',
+						'text-halo-width': 1.2,
 					}
 				});
 			});
@@ -141,8 +143,6 @@
 			})
 		});
 	});
-
-	$: console.log(census);
 
 	$: {
 		if (loaded) {
