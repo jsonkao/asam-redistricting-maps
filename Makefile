@@ -8,60 +8,11 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 # PLANS for web
 #
 
-main: visuals/static/output.topojson visuals/static/output_census.topojson visuals/static/points.json
 
-visuals/static/points.json: visuals/static/output.topojson Makefile
-	mapshaper $< \
-	-drop target=census,streets \
-	-merge-layers force target=* \
-	-points inner \
-	-each "this.coordinates = congress_letters === 'J' ? [65, 715] : this.coordinates" \
-	-o format=geojson ndjson - \
-	| ndjson-map '[...d.geometry.coordinates.map(Math.round), ...Object.entries(d.properties)[0]]' \
-	| ndjson-reduce \
-	> $@
+main: visuals/static/output_census_wgs84.topojson visuals/static/points.geojson visuals/static/plans.topojson
 
-output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_census.topojson visuals/static/output_congress.topojson
 
-visuals/static/output_assembly_senate_unity.topojson: visuals/static/output.topojson
-	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,assembly_unity,senate,senate_letters,senate_names,senate_unity
-
-# Prioritizes BGs in initial viewbox
-visuals/static/output_census.topojson: visuals/static/output.topojson visuals/src/lib/constants.js
-	mapshaper $< \
-	-rectangle bbox=$(FIRST_VIEWRECT) name=rect \
-	-each view=1 \
-	-target census \
-	-join rect \
-	-sort "fields ? 2 : (view || 0)" descending \
-	-filter-fields d,fields \
-	-o $@ target=census
-
-visuals/static/output_congress.topojson: visuals/static/output.topojson
-	mapshaper $< -o $@ target=congress,congress_letters,congress_names
-
-visuals/static/output_streets.topojson: visuals/static/output.topojson
-	mapshaper $< -o $@ target=streets
-
-mapping/output.shp: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson
-	mapshaper -i $^ combine-files \
-	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
-	-target '*' \
-	-clean \
-	-o $@
-
-visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
-	mapshaper -i $^ combine-files \
-	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
-	-proj aea \
-	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
-	-target '*' \
-	-clean \
-	-o - format=topojson width=975 \
-	| python3 preprocess.py -compress-topo \
-	| mapshaper -i - \
-	-clean \
-	-o $@
+# For Mapbox
 
 visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	mapshaper $< \
@@ -71,12 +22,12 @@ visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	| python3 preprocess.py -compress-topo \
 	> $@
 
-# For Mapbox
 visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
 	mapshaper -i $^ combine-files \
 	-clean \
 	-simplify 22% \
 	-o $@ quantization=1e5
+
 visuals/static/points.geojson: visuals/static/plans.topojson
 	mapshaper $< \
 	-merge-layers force target=* \
@@ -130,16 +81,12 @@ plans/current.zip:
 # - Join block group shapefile with data about Asian population
 #
 
-# Project and make web-friendly
-# -proj "+proj=laea +lon_0=-73.8555908 +lat_0=40.6825568 +datum=WGS84 +units=m +no_defs"
-# DELETED.
-
 # Filter geography down; join it with census data
 # TODO: join with plans
 # -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
 mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	mapshaper $< \
-	-filter "['047', '081', '061'].includes(COUNTYFP)" \
+	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP)" \
 	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
 	-join plans/senate.geojson largest-overlap \
@@ -181,29 +128,6 @@ unity/assembly_unity.geojson: unity/UnityMappingAssemblyDistrict_2021-11-04.json
 	-filter-fields District \
 	-rename-fields assembly_unity=District \
 	-o $@
-
-#
-# STREETS
-#
-
-streets/streets.geojson: streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp
-	mapshaper $< \
-	-filter "LeftCounty =='Kings' || RightCount=='Kings'" \
-	-simplify 0.8% \
-	-filter-fields Label \
-	-clean \
-	-o $@
-
-streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp:
-	curl -o streets/SimplifiedStreets.shp.zip -L "https://gis.ny.gov/gisdata/fileserver/?DSID=932&file=SimplifiedStreets.shp.zip"
-	unzip -d streets streets/SimplifiedStreets.shp.zip
-	mapshaper streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp \
-	-filter "LeftCityTo =='New York' || RightCityT=='New York'" \
-	-filter "Label.length > 0" \
-	-proj wgs84 \
-	-clean \
-	-filter-fields Label,LeftCounty,RightCount \
-	-o streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp force
 
 #
 # DATA
@@ -249,3 +173,91 @@ cvap/CVAP_2010.zip:
 	curl -o $@ -L https://www2.census.gov/programs-surveys/decennial/rdo/datasets/2010/2010-cvap/CVAP_2006-2010_ACS_csv_files.zip
 cvap/CVAP_2019.zip:
 	curl -o $@ -L https://www2.census.gov/programs-surveys/decennial/rdo/datasets/2019/2019-cvap/CVAP_2015-2019_ACS_csv_files.zip
+
+
+# =
+# ===
+# GARBAGE CAN
+# ===
+# =
+
+#
+# Web stuff
+#
+
+visuals/static/points.json: visuals/static/output.topojson Makefile
+	mapshaper $< \
+	-drop target=census,streets \
+	-merge-layers force target=* \
+	-points inner \
+	-each "this.coordinates = congress_letters === 'J' ? [65, 715] : this.coordinates" \
+	-o format=geojson ndjson - \
+	| ndjson-map '[...d.geometry.coordinates.map(Math.round), ...Object.entries(d.properties)[0]]' \
+	| ndjson-reduce \
+	> $@
+
+output_parts: visuals/static/output_assembly_senate.topojson visuals/static/output_congress.topojson
+
+visuals/static/output_assembly_senate_unity.topojson: visuals/static/output.topojson
+	mapshaper $< -o $@ target=assembly,assembly_letters,assembly_names,assembly_unity,senate,senate_letters,senate_names,senate_unity
+
+# Prioritizes BGs in initial viewbox
+visuals/static/output_census.topojson: visuals/static/output.topojson visuals/src/lib/constants.js
+	mapshaper $< \
+	-rectangle bbox=$(FIRST_VIEWRECT) name=rect \
+	-each view=1 \
+	-target census \
+	-join rect \
+	-sort "fields ? 2 : (view || 0)" descending \
+	-filter-fields d,fields \
+	-o $@ target=census
+
+visuals/static/output_congress.topojson: visuals/static/output.topojson
+	mapshaper $< -o $@ target=congress,congress_letters,congress_names
+
+visuals/static/output_streets.topojson: visuals/static/output.topojson
+	mapshaper $< -o $@ target=streets
+
+mapping/output.shp: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson
+	mapshaper -i $^ combine-files \
+	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
+	-target '*' \
+	-clean \
+	-o $@
+
+visuals/static/output.topojson: mapping/census.geojson $(PLANS_GEOJSON) plans/senate.geojson plans/congress.geojson plans/assembly.geojson streets/streets.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
+	mapshaper -i $^ combine-files \
+	-clip bbox=$(shell cat $< | jq -c .bbox | jq -r 'join(",")') \
+	-proj aea \
+	-simplify 22% target=census,assembly,assembly_letters,assembly_names,senate,senate_letters,senate_names,congress,congress_letters,congress_names \
+	-target '*' \
+	-clean \
+	-o - format=topojson width=975 \
+	| python3 preprocess.py -compress-topo \
+	| mapshaper -i - \
+	-clean \
+	-o $@
+
+
+#
+# STREETS
+#
+
+streets/streets.geojson: streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp
+	mapshaper $< \
+	-filter "LeftCounty =='Kings' || RightCount=='Kings'" \
+	-simplify 0.8% \
+	-filter-fields Label \
+	-clean \
+	-o $@
+
+streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp:
+	curl -o streets/SimplifiedStreets.shp.zip -L "https://gis.ny.gov/gisdata/fileserver/?DSID=932&file=SimplifiedStreets.shp.zip"
+	unzip -d streets streets/SimplifiedStreets.shp.zip
+	mapshaper streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp \
+	-filter "LeftCityTo =='New York' || RightCityT=='New York'" \
+	-filter "Label.length > 0" \
+	-proj wgs84 \
+	-clean \
+	-filter-fields Label,LeftCounty,RightCount \
+	-o streets/SimplifiedStreets.shp/SimplifiedStreetSegmentQrt.shp force
