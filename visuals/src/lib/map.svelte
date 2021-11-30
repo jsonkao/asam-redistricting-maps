@@ -107,7 +107,7 @@
 							'line-width': [
 								'case',
 								['boolean', ['feature-state', 'pointing'], false],
-								5,
+								4,
 								2,
 							]
 						}
