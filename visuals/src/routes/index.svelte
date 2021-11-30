@@ -11,7 +11,7 @@
 		const topoData = await (await fetch(`${base}/output_census_wgs84.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
 		const census = feature(topoData, obj);
-		const data = census.features//.map(reduceCoordinatePrecision);
+		const data = census.features; //.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['pop', 'vap', 'cvap'];
@@ -106,7 +106,7 @@
 	let showStreets, showModal, showStreetsCheckbox;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
-	let drawing, dragging, changingLines;
+	let drawing, dragging, changingLines, pointing;
 	let fetchedDrawings;
 	let draggedBgs = [];
 	let drawings = [];
@@ -114,7 +114,7 @@
 	let stats = {};
 	let presentationMode = false;
 
-	let panels = ['plans', 'views'];
+	let panels = ['plan'];
 
 	let plan = 'assembly';
 	let plan2 = 'assembly_unity';
@@ -157,7 +157,9 @@
 	let variable = 'vap';
 	$: metric = staticVars.includes(variable)
 		? variable
-		: (period ? (variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20)) : period);
+		: period
+		? variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20)
+		: period;
 
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
@@ -332,7 +334,9 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
+	const togglePointing = () => pointing = !pointing;
 	function handleKeydown({ key }) {
+		if (key === ' ') togglePointing();
 		if (!presentationMode) return;
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
@@ -502,6 +506,7 @@
 		{viewBox}
 		{plansTopo}
 		{census}
+		{pointing}
 		{draggedBgs}
 		{data}
 		{path}
@@ -515,12 +520,14 @@
 		{panels}
 		{drawings}
 		{plan}
+		{plan2}
 		{points}
 		{tractMesh}
 		{bgMesh}
 		{mesh}
 		{aggregates}
 		{obj}
+		{togglePointing}
 		{handleLabelClick}
 		{congressPlans}
 		{plans}

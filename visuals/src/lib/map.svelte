@@ -1,7 +1,7 @@
 <script>
 	import { feature } from 'topojson-client';
 	import { onMount } from 'svelte';
-	import { planDesc, hexToRGB } from '$lib/utils';
+	import { hexToRGB } from '$lib/utils';
 
 	export let viewBox,
 		census,
@@ -19,7 +19,9 @@
 		drawings,
 		panels,
 		plan,
+		plan2,
 		points,
+		pointing,
 		tractMesh,
 		bgMesh,
 		mesh,
@@ -27,6 +29,7 @@
 		obj,
 		handleLabelClick,
 		congressPlans,
+		togglePointing,
 		// plans,
 		startDrag,
 		endDrag,
@@ -54,7 +57,7 @@
 		if (metric === null) return 'rgba(0, 0, 0, 0)';
 		const matchExp = ['match', ['get', 'GEOID']];
 		census.features.forEach((f) => {
-			matchExp.push(f.properties.GEOID, hexToRGB(color(f, metric, period, showPluralities)));
+			matchExp.push(f.properties.GEOID, hexToRGB(color(f)));
 		});
 		matchExp.push('rgba(0, 0, 0, 0)');
 		return matchExp;
@@ -88,7 +91,10 @@
 				const data = feature(plansTopo, plansTopo.objects[k]);
 				map.addSource(k, {
 					type: 'geojson',
-					data
+					data: {
+						type: 'FeatureCollection',
+						features: data.features.map((f) => ({ ...f, id: f.properties[k] }))
+					}
 				});
 				map.addLayer(
 					{
@@ -98,7 +104,12 @@
 						layout: {},
 						paint: {
 							'line-color': '#121212',
-							'line-width': ['interpolate', ['exponential', 2], ['zoom'], 10, 1, 15, 3]
+							'line-width': [
+								'case',
+								['boolean', ['feature-state', 'pointing'], false],
+								5,
+								2,
+							]
 						}
 					},
 					'road-label-small'
@@ -137,10 +148,16 @@
 			});
 			loaded = true;
 
-			map.on('click', function (e) {
-				const features = map.queryRenderedFeatures(e.point).filter((f) => f.properties[plan]);
-				if (features.length === 0) return;
-				handleLabelClick(`${plan},${features[0].properties[plan]}`);
+			map.on('click', (e) => {
+				if (!pointing) return;
+				togglePointing();
+				const features = map
+					.queryRenderedFeatures(e.point)
+					.filter((f) => allPlans.some((p) => p === f.source));
+				features.forEach((f) => {
+					map.setFeatureState({ source: f.source, id: f.properties[f.source] }, { pointing: true });
+				});
+				console.log(features);
 			});
 		});
 	});
@@ -148,11 +165,22 @@
 	$: {
 		if (loaded) {
 			allPlans.forEach((p) => {
-				const visibility = p === plan ? 'visible' : 'none';
+				const isPlan2 = panels.includes('plan2') && p === plan2;
+				const visibility = p === plan || isPlan2 ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);
+
+				const color = isPlan2 ? '#8856a7' : '#121212';
+				map.setPaintProperty(`${p}_outline`, 'line-color', color);
+				map.setPaintProperty(`${p}_labels`, 'text-color', color);
 			});
+		}
+	}
+
+	$: {
+		if (loaded) {
+			map.getCanvas().style.cursor = pointing ? 'crosshair' : 'pointer';
 		}
 	}
 

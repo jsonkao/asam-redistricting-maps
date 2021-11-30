@@ -4,16 +4,18 @@
 	import { slide } from 'svelte/transition';
 
 	export let panels, togglePanel, panelName;
+
+	const niceNames = {
+		plan: 'Districts' + (translate ? ' / 区域划分' : ''),
+		plan2: 'Compare a district',
+		views: 'Views' + (translate ? ' / 选择区' : ''),
+	}
 </script>
 
 <div class="panel">
 	<h3>
 		<button on:click={() => togglePanel(panelName)}>
-			{panelName.startsWith('plan')
-				? ('Districts' + (translate ? ' / 区域划分' : ''))
-				: panelName === 'views'
-				? ('Views' + (translate ? ' / 选择区' : ''))
-				: capitalize(panelName)}
+			{niceNames[panelName] || capitalize(panelName)}
 			{panels.includes(panelName) ? '↑' : '↓'}
 		</button>
 		<slot name="title" />
