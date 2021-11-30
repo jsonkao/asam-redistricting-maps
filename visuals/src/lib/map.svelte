@@ -21,6 +21,7 @@
 		plan,
 		plan2,
 		points,
+		isolate,
 		pointing,
 		tractMesh,
 		bgMesh,
@@ -63,6 +64,8 @@
 		return matchExp;
 	}
 
+	const defaultLineWidth = ['case', ['boolean', ['feature-state', 'pointing'], false], 3.5, 1.8]
+
 	onMount(() => {
 		mapboxgl.accessToken =
 			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
@@ -87,14 +90,14 @@
 				'parks'
 			);
 
-			const plansGeojsons = {}
-			allPlans.forEach(k => {
+			const plansGeojsons = {};
+			allPlans.forEach((k) => {
 				const data = feature(plansTopo, plansTopo.objects[k]);
 				plansGeojsons[k] = {
-						type: 'FeatureCollection',
-						features: data.features.map((f) => ({ ...f, id: f.properties[k] }))
-					}
-			})
+					type: 'FeatureCollection',
+					features: data.features.map((f) => ({ ...f, id: f.properties[k] }))
+				};
+			});
 
 			allPlans.forEach((k) => {
 				map.addSource(k, {
@@ -110,7 +113,7 @@
 						layout: {},
 						paint: {
 							'line-color': '#121212',
-							'line-width': ['case', ['boolean', ['feature-state', 'pointing'], false], 4, 2]
+							'line-width': defaultLineWidth
 						}
 					},
 					'road-label-small'
@@ -146,7 +149,17 @@
 					layout: {
 						'text-justify': 'auto',
 						'text-allow-overlap': true,
-						'text-variable-anchor': ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"],
+						'text-variable-anchor': [
+							'center',
+							'left',
+							'right',
+							'top',
+							'bottom',
+							'top-left',
+							'top-right',
+							'bottom-left',
+							'bottom-right'
+						],
 						'text-radial-offset': 1,
 						'text-field': ['format', ['get', k], { 'font-scale': 1.35 }] /*
 						'text-font': [
@@ -171,9 +184,9 @@
 					const features = map
 						.queryRenderedFeatures(e.point)
 						.filter((f) => allPlans.some((p) => p === f.source));
-					console.log(features)
+					console.log(features);
 					pointingOn = features.map((f) => {
-						console.log(plansGeojsons[f.source])
+						console.log(plansGeojsons[f.source]);
 						map.setFeatureState(
 							{ source: f.source, id: f.properties[f.source] },
 							{ pointing: true }
@@ -191,6 +204,10 @@
 						.filter((f) => f.source.endsWith('_labels'));
 					features.forEach((f) => {
 						const scope_proposal = f.source.replace('_labels', '');
+						map.setFeatureState(
+							{ source: scope_proposal, id: f.properties[scope_proposal] },
+							{ pointing: true }
+						);
 						handleLabelClick(`${scope_proposal},${f.properties[scope_proposal]}`);
 					});
 				}
@@ -242,6 +259,23 @@
 			};
 			map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(1.5 - opacity));
 			map.setPaintProperty(`${plan2}_labels`, 'text-opacity', cap(opacity));
+		}
+	}
+
+	$: {
+		if (loaded) {
+			const applicablePlans = [plan];
+			if (panels.includes('plan2')) applicablePlans.push(plan2);
+			applicablePlans.forEach((p) => {
+				map.setPaintProperty(
+					`${p}_outline`,
+					'line-width',
+					isolate
+						? ['case', ['boolean', ['feature-state', 'pointing'], false], 3, 0]
+						: defaultLineWidth
+				);
+			});
+			map.setPaintProperty();
 		}
 	}
 

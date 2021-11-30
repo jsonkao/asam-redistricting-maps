@@ -113,11 +113,12 @@
 	let aggregates = [];
 	let stats = {};
 	let presentationMode = false;
+	let isolate = false;
 
 	let panels = ['plan'];
 
-	let plan = 'assembly';
-	let plan2 = 'assembly_unity';
+	let plan = 'senate';
+	let plan2 = 'senate_unity';
 	let bgMesh, congressPlans, streets;
 	let plans;
 
@@ -346,6 +347,7 @@
 	const togglePointing = () => (pointing = !pointing);
 	function handleKeydown({ key }) {
 		if (key === ' ') togglePointing();
+		if (key === 'i') isolate = !isolate;
 		if (!presentationMode) return;
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
@@ -541,6 +543,7 @@
 		{obj}
 		{togglePointing}
 		{handleLabelClick}
+		{isolate}
 		{congressPlans}
 		{plans}
 		{startDrag}
