@@ -66,6 +66,11 @@
 
 	const defaultLineWidth = ['case', ['boolean', ['feature-state', 'pointing'], false], 3.5, 1.8]
 
+	const corrections = {
+		/* Q: "14",
+		G: "16" */
+	}
+
 	onMount(() => {
 		mapboxgl.accessToken =
 			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
@@ -95,7 +100,13 @@
 				const data = feature(plansTopo, plansTopo.objects[k]);
 				plansGeojsons[k] = {
 					type: 'FeatureCollection',
-					features: data.features.map((f) => ({ ...f, id: f.properties[k] }))
+					features: data.features.map((f) => {
+						if (k === 'senate_unity' && f.properties[k] in corrections) {
+							console.log(k, f.properties)
+							f.properties[k] = `${corrections[f.properties[k]]} (${f.properties[k]})`;
+						}
+						return { ...f, id: f.properties[k] }
+					})
 				};
 			});
 
@@ -248,17 +259,24 @@
 	}
 
 	$: {
-		if (loaded && panels.includes('plan2')) {
-			let cap = (x) => Math.max(0.1, Math.min(x, 1));
-			map.setPaintProperty(`${plan}_outline`, 'line-opacity', cap(1.5 - opacity));
-			map.setPaintProperty(`${plan2}_outline`, 'line-opacity', cap(opacity));
+		if (loaded) {
+			if (panels.includes('plan2')) {
+				let cap = (x) => Math.max(0.1, Math.min(x, 1));
+				map.setPaintProperty(`${plan}_outline`, 'line-opacity', cap(1.5 - opacity));
+				map.setPaintProperty(`${plan2}_outline`, 'line-opacity', cap(opacity));
 
-			cap = (x) => {
-				if (x > 0.6 && x < 0.8) return 1;
-				return x < 0.35 ? 0.35 : x > 0.75 ? 1 : x;
-			};
-			map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(1.5 - opacity));
-			map.setPaintProperty(`${plan2}_labels`, 'text-opacity', cap(opacity));
+				cap = (x) => {
+					if (x > 0.6 && x < 0.8) return 1;
+					return x < 0.35 ? 0.35 : x > 0.75 ? 1 : x;
+				};
+				map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(1.5 - opacity));
+				map.setPaintProperty(`${plan2}_labels`, 'text-opacity', cap(opacity));
+			} else {
+				map.setPaintProperty(`${plan}_outline`, 'line-opacity', 1);
+				map.setPaintProperty(`${plan2}_outline`, 'line-opacity', 1);
+				map.setPaintProperty(`${plan}_labels`, 'text-opacity', 1);
+				map.setPaintProperty(`${plan2}_labels`, 'text-opacity', 1);
+			}
 		}
 	}
 
@@ -275,7 +293,6 @@
 						: defaultLineWidth
 				);
 			});
-			map.setPaintProperty();
 		}
 	}
 

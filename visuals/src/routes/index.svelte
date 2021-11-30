@@ -117,8 +117,8 @@
 
 	let panels = ['plan'];
 
-	let plan = 'senate';
-	let plan2 = 'senate_unity';
+	let plan = 'assembly';
+	let plan2 = 'assembly_unity';
 	let bgMesh, congressPlans, streets;
 	let plans;
 
@@ -402,7 +402,7 @@
 
 				{#if dynamicVars.includes(variable)}
 					<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
-						Show {showPluralities ? 'pct. asian' : 'all race and ethniticies'}
+						Show {showPluralities ? 'pct. asian' : 'all races and ethniticies'}
 					</button>
 				{/if}
 			</div>

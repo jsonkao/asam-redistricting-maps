@@ -25,13 +25,13 @@
 					<table>
 						<tr>
 							<th />
-							<!-- <th>2010 {varLabel}</th> -->
+							<th>2010 {varLabel}</th>
 							<th>2020 {varLabel}</th>
 						</tr>
 						{#each groups as grp}
 							<tr>
 								<td>{capitalize(grp)}</td>
-								<!-- <td>{pct(stats[a][variable + '10' + grp])}</td> -->
+								<td>{pct(stats[a][variable + '10' + grp])}</td>
 								<td>{pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp])}</td>
 							</tr>
 						{/each}
