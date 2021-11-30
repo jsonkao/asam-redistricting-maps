@@ -245,7 +245,7 @@
 		}
 	}
 
-	$: plan.startsWith('congress') && congressPlans === undefined && loadCongressMeshes();
+	$: (plan + plan2).includes('congress') && congressPlans === undefined && loadCongressMeshes();
 	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
 
 	$: showStreets && streets === undefined && loadStreets();
@@ -309,16 +309,12 @@
 	const togglePanel = (p) =>
 		(panels = panels.includes(p) ? panels.filter((x) => x !== p) : [...panels, p]);
 
-	$: labelSize =
-		((plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2])) *
-		(presentationMode ? 1.24 : 1.1);
-
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
 			const [aPlan, aDistrict] = aggregates[i].split(',');
-			if (aPlan === plan /* && !(aggregates[i] in stats) */) {
+			if (aPlan === plan || aPlan === plan2 /* && !(aggregates[i] in stats) */) {
 				stats[aggregates[i]] = getStats(
-					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[plan])
+					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[aPlan])
 				);
 			}
 		}
@@ -413,7 +409,7 @@
 			{breaks}
 		/>
 
-		<Panel panelName="plans" {panels} {togglePanel}>
+		<Panel panelName="plan" {panels} {togglePanel}>
 			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
 				{changingLines ? 'Original' : 'Modify'}
 			</button> -->
@@ -437,6 +433,39 @@
 					{aggregates}
 					{handleLabelClick}
 					{plan}
+					{stats}
+					{groups}
+					{changingLines}
+					{idealValues}
+					{variable}
+				/>
+			</div>
+		</Panel>
+
+		<Panel panelName="plan2" {panels} {togglePanel}>
+			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
+				{changingLines ? 'Original' : 'Modify'}
+			</button> -->
+			<div slot="body">
+				<div class="plan-selector">
+					<select bind:value={plan2}>
+						{#each ['assembly', 'senate', 'congress'] as scope}
+							<optgroup label={capitalize(scope)}>
+								{#each ['', '_letters', '_names', '_unity'] as proposal}
+									{#if scope + proposal !== 'congress_unity'}
+										<option value={scope + proposal}>
+											{planDesc(scope + proposal)}
+										</option>
+									{/if}
+								{/each}
+							</optgroup>
+						{/each}
+					</select>
+				</div>
+				<Tables
+					{aggregates}
+					{handleLabelClick}
+					plan={plan2}
 					{stats}
 					{groups}
 					{changingLines}
@@ -479,7 +508,6 @@
 		{viewBox}
 		{plansTopo}
 		{census}
-		{labelSize}
 		{draggedBgs}
 		{data}
 		{path}

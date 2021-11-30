@@ -9,7 +9,7 @@
 <div class="panel">
 	<h3>
 		<button on:click={() => togglePanel(panelName)}>
-			{panelName === 'plans'
+			{panelName.startsWith('plan')
 				? ('Districts' + (translate ? ' / 区域划分' : ''))
 				: panelName === 'views'
 				? ('Views' + (translate ? ' / 选择区' : ''))

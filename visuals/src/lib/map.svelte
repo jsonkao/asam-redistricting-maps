@@ -6,7 +6,6 @@
 	export let viewBox,
 		census,
 		plansTopo,
-		labelSize,
 		draggedBgs,
 		data,
 		path,
