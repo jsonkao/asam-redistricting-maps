@@ -51,6 +51,16 @@
 		'senate_unity'
 	];
 
+	function getCensusFills() {
+		if (metric === null) return 'rgba(0, 0, 0, 0)';
+		const matchExp = ['match', ['get', 'GEOID']];
+		census.features.forEach((f) => {
+			matchExp.push(f.properties.GEOID, hexToRGB(color(f, metric, period, showPluralities)));
+		});
+		matchExp.push('rgba(0, 0, 0, 0)');
+		return matchExp;
+	}
+
 	onMount(() => {
 		mapboxgl.accessToken =
 			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
@@ -63,18 +73,13 @@
 
 		map.on('load', async () => {
 			map.addSource('census', { type: 'geojson', data: census });
-			const matchExp = ['match', ['get', 'GEOID']];
-			census.features.forEach((f) => {
-				matchExp.push(f.properties.GEOID, color(f, metric, period, showPluralities));
-			});
-			matchExp.push('rgba(0, 0, 0, 0)');
 			map.addLayer(
 				{
 					id: 'census',
 					type: 'fill',
 					source: 'census',
 					paint: {
-						'fill-color': matchExp
+						'fill-color': getCensusFills()
 					}
 				},
 				'parks'
@@ -86,22 +91,19 @@
 					type: 'geojson',
 					data
 				});
-				map.addLayer({
-					id: k + '_outline',
-					type: 'line',
-					source: k,
-					layout: {},
-					paint: {
-						'line-color': '#000',
-						'line-width': [
-							'interpolate',
-							['exponential', 2],
-							['zoom'],
-							10, 1,
-							15, 3
-						]
-					}
-				});
+				map.addLayer(
+					{
+						id: k + '_outline',
+						type: 'line',
+						source: k,
+						layout: {},
+						paint: {
+							'line-color': '#121212',
+							'line-width': ['interpolate', ['exponential', 2], ['zoom'], 10, 1, 15, 3]
+						}
+					},
+					'road-label-small'
+				);
 				map.addLayer({
 					id: k + '_fill',
 					type: 'fill',
@@ -130,17 +132,17 @@
 					paint: {
 						'text-color': '#121212',
 						'text-halo-color': '#fff',
-						'text-halo-width': 1.2,
+						'text-halo-width': 1.2
 					}
 				});
 			});
 			loaded = true;
 
 			map.on('click', function (e) {
-				const features = map.queryRenderedFeatures(e.point).filter(f => f.properties[plan]);
+				const features = map.queryRenderedFeatures(e.point).filter((f) => f.properties[plan]);
 				if (features.length === 0) return;
 				handleLabelClick(`${plan},${features[0].properties[plan]}`);
-			})
+			});
 		});
 	});
 
@@ -157,12 +159,7 @@
 
 	$: {
 		if (loaded) {
-			const matchExp = ['match', ['get', 'GEOID']];
-			census.features.forEach((f) => {
-				matchExp.push(f.properties.GEOID, hexToRGB(color(f, metric, period, showPluralities)));
-			});
-			matchExp.push('rgba(0, 0, 0, 0)');
-			map.setPaintProperty('census', 'fill-color', matchExp);
+			map.setPaintProperty('census', 'fill-color', getCensusFills(metric, period, showPluralities));
 		}
 	}
 </script>

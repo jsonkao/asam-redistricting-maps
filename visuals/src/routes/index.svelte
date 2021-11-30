@@ -117,6 +117,7 @@
 	let panels = ['plans', 'views'];
 
 	let plan = 'assembly';
+	let plan2 = 'assembly_unity';
 	let bgMesh, congressPlans, streets;
 	let plans;
 
@@ -152,11 +153,11 @@
 		obj = obj;
 	}
 
-	let period = 'present';
-	let variable = 'pop';
+	let period = null; // 'present';
+	let variable = 'vap';
 	$: metric = staticVars.includes(variable)
 		? variable
-		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
+		: (period ? (variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20)) : period);
 
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
@@ -181,6 +182,10 @@
 	let showPluralities = false;
 
 	function color({ properties: d }) {
+		if (metric === null) {
+			console.trace();
+			return null;
+		}
 		if (!d.ALAND) return 'rgba(0, 0, 0, 0)';
 		const total = d[`${metric}_total`];
 
@@ -381,6 +386,10 @@
 							{capitalize(p)}
 						</label>
 					{/each}
+					<label>
+						<input type="radio" bind:group={period} name="period" value={null} />
+						Hide
+					</label>
 				{/if}
 
 				{#if dynamicVars.includes(variable)}
