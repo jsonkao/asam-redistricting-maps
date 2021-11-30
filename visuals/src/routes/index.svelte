@@ -14,7 +14,7 @@
 		const data = census.features//.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
-		const dynamicVars = ['pop', 'cvap'];
+		const dynamicVars = ['pop', 'vap', 'cvap'];
 		const staticVars = [
 			...data.reduce((acc, val) => {
 				const fields = Object.keys(val.properties)
@@ -160,7 +160,8 @@
 
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
-		cvap: [0, 0.1, 0.2, 0.4, 0.6]
+		cvap: [0, 0.1, 0.2, 0.4, 0.6],
+		vap: [0, 0.1, 0.2, 0.4, 0.6]
 	};
 	$: getValue = {
 		income: (d) => d[metric],

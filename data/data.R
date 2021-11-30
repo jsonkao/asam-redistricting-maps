@@ -28,7 +28,7 @@ interpolate <- function(data) {
 
 county <- c("Kings", "New York", "Queens", "Bronx", "Richmond")
 
-#' # Decennial population data; commented out bc we only care about CVAP populations now
+#' # Decennial population data
 
 # 2010 population data interpolated to 2020 block groups (asian = Asian alone)
 pop10_bg20 <- get_decennial(
@@ -52,6 +52,29 @@ pop20_bg20 <- get_decennial(
   year = 2020
 ) %>%
   select(GEOID, group = variable, pop = value)
+
+# 2010 VAP data interpolated to 2020 block groups (asian = Asian alone)
+vap10_bg20 <- get_decennial(
+  geography = "block group",
+  state = "New York",
+  county = county,
+  variables = c(asian = "P010006", total = "P001001", white = "P010003", black = "P010004", hispanic = "P011002"),
+  year = 2010
+) %>%
+  select(GEOID, group = variable, value) %>%
+  interpolate() %>% 
+  rename(vap = value)
+
+# 2020 population data in 2020 block groups
+vap20_bg20 <- get_decennial(
+  geography = "block group",
+  state = "New York",
+  county = county,
+  variables = c(total = "P3_001N", asian = "P3_006N", white = "P3_003N", black = "P3_004N", hispanic = "P4_002N"),
+  sumfile = "pl",
+  year = 2020
+) %>%
+  select(GEOID, group = variable, vap = value)
 
 #' # CVAP Data
 
@@ -154,13 +177,24 @@ dynamic_consolidated <- inner_join(
   by = c("GEOID", "group"),
   suffix = c("10", "19")
 ) %>%
-  inner_join(inner_join(
-    pop10_bg20,
-    pop20_bg20,
-    by = c("GEOID", "group"),
-    suffix = c("10", "20")
-  ),
-  by = c("GEOID", "group")) %>% 
+  inner_join(
+    inner_join(
+      inner_join(
+        pop10_bg20,
+        pop20_bg20,
+        by = c("GEOID", "group"),
+        suffix = c("10", "20")
+      ),
+      inner_join(
+        vap10_bg20,
+        vap20_bg20,
+        by = c("GEOID", "group"),
+        suffix = c("10", "20")
+      ),
+      by = c("GEOID", "group")
+    ),
+    by = c("GEOID", "group")
+  ) %>% 
   tidyr::pivot_wider(names_from = group, values_from = !c(GEOID, group))
 
 #' # Generating desirable output
