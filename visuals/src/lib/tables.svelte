@@ -13,64 +13,66 @@
 
 	export let type = 'districts';
 
-	$: varLabel = variable === 'pop' ? 'Pop.' : variable.toUpperCase();
+	$: varLabel = variable === 'pop' ? 'Pop.' : (variable || '').toUpperCase();
 </script>
 
-{#if type === 'districts'}
-	{#each aggregates as a}
-		{#if a.split(',')[0].split('_')[0] === plan.split('_')[0]}
-			<div class="district-aggregate">
-				<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
+{#if variable !== null}
+	{#if type === 'districts'}
+		{#each aggregates as a}
+			{#if a.split(',')[0] === plan}
+				<div class="district-aggregate">
+					<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
+					<table>
+						<tr>
+							<th />
+							<!-- <th>2010 {varLabel}</th> -->
+							<th>2020 {varLabel}</th>
+						</tr>
+						{#each groups as grp}
+							<tr>
+								<td>{capitalize(grp)}</td>
+								<!-- <td>{pct(stats[a][variable + '10' + grp])}</td> -->
+								<td>{pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp])}</td>
+							</tr>
+						{/each}
+					</table>
+					{#if changingLines && plan in idealValues}
+						<p class="table-footer">
+							Income: {money(stats[a].income) +
+								(changingLines && plan in idealValues
+									? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
+									: '')}
+						</p>
+					{/if}
+				</div>
+			{/if}
+		{/each}
+	{:else if type === 'community'}
+		{#each drawings as { name, stats }, i}
+			<div>
+				<p>
+					<i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button>
+				</p>
 				<table>
 					<tr>
 						<th />
-						<!-- <th>2010 {varLabel}</th> -->
-						<th>2020 {varLabel}</th>
+						<th>CVAP</th>
+						<th>Pop.</th>
 					</tr>
-					{#each groups as grp}
+					{#each groups as g}
 						<tr>
-							<td>{capitalize(grp)}</td>
-							<!-- <td>{pct(stats[a][variable + '10' + grp])}</td> -->
-							<td>{pct(stats[a][variable + (variable === 'pop' ? '20' : '19') + grp])}</td>
+							<td>{capitalize(g)}</td>
+							<td>{pct(stats['cvap19' + g])}</td>
+							<td>{pct(stats['pop20' + g])}</td>
 						</tr>
 					{/each}
 				</table>
-				{#if changingLines && plan in idealValues}
-					<p class="table-footer">
-						Income: {money(stats[a].income) +
-							(changingLines && plan in idealValues
-								? '; ' + deviation(stats[a]['pop20_total'] - idealValues[plan])
-								: '')}
-					</p>
-				{/if}
+				<p class="table-footer">Income: {money(stats.income)}</p>
+				<p class="table-footer">Asian and LEP: {pct(stats['hhlang'])}</p>
+				<p class="table-footer">Pct. gov't benefits: {pct(stats['benefits'])}</p>
 			</div>
-		{/if}
-	{/each}
-{:else if type === 'community'}
-	{#each drawings as { name, stats }, i}
-		<div>
-			<p>
-				<i>{name || 'COI' + (i + 1)}</i> <button on:click={() => delDrawing(i)}>🗑</button>
-			</p>
-			<table>
-				<tr>
-					<th />
-					<th>CVAP</th>
-					<th>Pop.</th>
-				</tr>
-				{#each groups as g}
-					<tr>
-						<td>{capitalize(g)}</td>
-						<td>{pct(stats['cvap19' + g])}</td>
-						<td>{pct(stats['pop20' + g])}</td>
-					</tr>
-				{/each}
-			</table>
-			<p class="table-footer">Income: {money(stats.income)}</p>
-			<p class="table-footer">Asian and LEP: {pct(stats['hhlang'])}</p>
-			<p class="table-footer">Pct. gov't benefits: {pct(stats['benefits'])}</p>
-		</div>
-	{/each}
+		{/each}
+	{/if}
 {/if}
 
 <style>

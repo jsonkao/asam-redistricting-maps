@@ -25,7 +25,7 @@
 		tractMesh,
 		bgMesh,
 		mesh,
-		aggregates,
+		opacity,
 		obj,
 		handleLabelClick,
 		congressPlans,
@@ -87,14 +87,20 @@
 				'parks'
 			);
 
-			allPlans.forEach((k) => {
+			const plansGeojsons = {}
+			allPlans.forEach(k => {
 				const data = feature(plansTopo, plansTopo.objects[k]);
-				map.addSource(k, {
-					type: 'geojson',
-					data: {
+				plansGeojsons[k] = {
 						type: 'FeatureCollection',
 						features: data.features.map((f) => ({ ...f, id: f.properties[k] }))
 					}
+			})
+
+			allPlans.forEach((k) => {
+				map.addSource(k, {
+					type: 'geojson',
+					data: plansGeojsons[k],
+					promoteId: k
 				});
 				map.addLayer(
 					{
@@ -104,12 +110,7 @@
 						layout: {},
 						paint: {
 							'line-color': '#121212',
-							'line-width': [
-								'case',
-								['boolean', ['feature-state', 'pointing'], false],
-								4,
-								2,
-							]
+							'line-width': ['case', ['boolean', ['feature-state', 'pointing'], false], 4, 2]
 						}
 					},
 					'road-label-small'
@@ -128,7 +129,14 @@
 					type: 'geojson',
 					data: {
 						type: 'FeatureCollection',
-						features: points.features.filter((p) => p.properties[k])
+						features: points.features
+							.filter((p) => p.properties[k])
+							.map((f) => ({
+								type: f.feature,
+								id: f.properties[k],
+								geometry: f.geometry,
+								properties: f.properties
+							}))
 					}
 				});
 				map.addLayer({
@@ -137,7 +145,16 @@
 					source: k + '_labels',
 					layout: {
 						'text-justify': 'auto',
-						'text-field': ['format', ['get', k], { 'font-scale': 1.35 }]
+						'text-allow-overlap': true,
+						'text-variable-anchor': ["center", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"],
+						'text-radial-offset': 1,
+						'text-field': ['format', ['get', k], { 'font-scale': 1.35 }] /*
+						'text-font': [
+							'case',
+							['boolean', ['feature-state', 'pointing'], false],
+							['Arial Unicode MS Bold',],
+							['Arial Unicode MS Regular'],
+						] */
 					},
 					paint: {
 						'text-color': '#121212',
@@ -149,18 +166,39 @@
 			loaded = true;
 
 			map.on('click', (e) => {
-				if (!pointing) return;
-				togglePointing();
-				const features = map
-					.queryRenderedFeatures(e.point)
-					.filter((f) => allPlans.some((p) => p === f.source));
-				features.forEach((f) => {
-					map.setFeatureState({ source: f.source, id: f.properties[f.source] }, { pointing: true });
-				});
-				console.log(features);
+				if (pointing) {
+					togglePointing();
+					const features = map
+						.queryRenderedFeatures(e.point)
+						.filter((f) => allPlans.some((p) => p === f.source));
+					console.log(features)
+					pointingOn = features.map((f) => {
+						console.log(plansGeojsons[f.source])
+						map.setFeatureState(
+							{ source: f.source, id: f.properties[f.source] },
+							{ pointing: true }
+						);
+						/* map.setFeatureState(
+							{ source: f.source + '_labels', id: f.properties[f.source] },
+							{ pointing: true }
+						); */
+						handleLabelClick(`${f.source},${f.properties[f.source]}`, true);
+						return { source: f.source, id: f.properties[f.source] };
+					});
+				} else {
+					const features = map
+						.queryRenderedFeatures(e.point)
+						.filter((f) => f.source.endsWith('_labels'));
+					features.forEach((f) => {
+						const scope_proposal = f.source.replace('_labels', '');
+						handleLabelClick(`${scope_proposal},${f.properties[scope_proposal]}`);
+					});
+				}
 			});
 		});
 	});
+
+	let pointingOn = [];
 
 	$: {
 		if (loaded) {
@@ -181,6 +219,29 @@
 	$: {
 		if (loaded) {
 			map.getCanvas().style.cursor = pointing ? 'crosshair' : 'pointer';
+
+			if (pointing && pointingOn.length > 0) {
+				pointingOn.forEach((fs) => {
+					map.setFeatureState(fs, { pointing: false });
+					// map.setFeatureState({ source: fs.source + '_labels', id: fs.id }, { pointing: false });
+					handleLabelClick(`${fs.source},${fs.id}`, false, true);
+				});
+			}
+		}
+	}
+
+	$: {
+		if (loaded && panels.includes('plan2')) {
+			let cap = (x) => Math.max(0.1, Math.min(x, 1));
+			map.setPaintProperty(`${plan}_outline`, 'line-opacity', cap(1.5 - opacity));
+			map.setPaintProperty(`${plan2}_outline`, 'line-opacity', cap(opacity));
+
+			cap = (x) => {
+				if (x > 0.6 && x < 0.8) return 1;
+				return x < 0.35 ? 0.35 : x > 0.75 ? 1 : x;
+			};
+			map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(1.5 - opacity));
+			map.setPaintProperty(`${plan2}_labels`, 'text-opacity', cap(opacity));
 		}
 	}
 

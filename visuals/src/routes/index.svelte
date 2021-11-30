@@ -121,6 +121,8 @@
 	let bgMesh, congressPlans, streets;
 	let plans;
 
+	let opacity = .75;
+
 	let containerFont = presentationMode ? 24 : 18;
 	let clientWidth;
 	let viewCutoff = 870; // manually copied from make/mapshaper output
@@ -153,13 +155,13 @@
 		obj = obj;
 	}
 
-	let period = null; // 'present';
+	let period = 'present';
 	let variable = 'vap';
 	$: metric = staticVars.includes(variable)
 		? variable
-		: period
+		: variable
 		? variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20)
-		: period;
+		: variable;
 
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
@@ -274,7 +276,7 @@
 			pct_increase: (new_asian - old_asian) / old_asian,
 			pct_increase_cvap: (new_asiancvap - old_asiancvap) / old_asiancvap
 		};
-		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) =>
+		['pop20', 'vap20', 'cvap19', 'pop10', 'vap10', 'cvap10'].forEach((m) =>
 			groups.forEach((g) => (output[m + g] = prop(m, g)))
 		);
 		return output;
@@ -322,9 +324,16 @@
 		}
 	}
 
-	function handleLabelClick(id) {
-		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);
-		else aggregates = [...aggregates, id];
+	function handleLabelClick(id, forceInclusion = false, forceExclusion = false) {
+		if (aggregates.includes(id)) {
+			if (!forceInclusion) {
+				aggregates = aggregates.filter((a) => a !== id);
+			}
+		} else {
+			if (!forceExclusion) {
+				aggregates = [...aggregates, id];
+			}
+		}
 	}
 
 	const startDrag = () => (dragging = true);
@@ -334,7 +343,7 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
-	const togglePointing = () => pointing = !pointing;
+	const togglePointing = () => (pointing = !pointing);
 	function handleKeydown({ key }) {
 		if (key === ' ') togglePointing();
 		if (!presentationMode) return;
@@ -365,6 +374,7 @@
 				? 'auto'
 				: 'calc(var(--control-width) + 45px * 0)'}"
 		>
+			<option value={null}>Select data</option>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
 					<option value={v}>{variablesLong[v] || v}</option>
@@ -386,10 +396,6 @@
 							{capitalize(p)}
 						</label>
 					{/each}
-					<label>
-						<input type="radio" bind:group={period} name="period" value={null} />
-						Hide
-					</label>
 				{/if}
 
 				{#if dynamicVars.includes(variable)}
@@ -400,18 +406,20 @@
 			</div>
 		{/if}
 
-		<Legend
-			{groups}
-			{levels}
-			{colors}
-			{dynamicVars}
-			{variable}
-			{metric}
-			{showPluralities}
-			{pluralityVars}
-			{periods}
-			{breaks}
-		/>
+		{#if metric !== null}
+			<Legend
+				{groups}
+				{levels}
+				{colors}
+				{dynamicVars}
+				{variable}
+				{metric}
+				{showPluralities}
+				{pluralityVars}
+				{periods}
+				{breaks}
+			/>
+		{/if}
 
 		<Panel panelName="plan" {panels} {togglePanel}>
 			<div slot="body">
@@ -445,6 +453,9 @@
 
 		<Panel panelName="plan2" {panels} {togglePanel}>
 			<div slot="body">
+				<div class="slider">
+					<input type="range" bind:value={opacity} min=0 max=1.5 step=0.01>
+				</div>
 				<div class="plan-selector">
 					<select bind:value={plan2}>
 						{#each ['assembly', 'senate', 'congress'] as scope}
@@ -515,6 +526,7 @@
 		{neighbor}
 		{showPluralities}
 		{metric}
+		{opacity}
 		{period}
 		{tractVars}
 		{panels}
