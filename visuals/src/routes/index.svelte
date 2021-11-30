@@ -410,9 +410,6 @@
 		/>
 
 		<Panel panelName="plan" {panels} {togglePanel}>
-			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
-				{changingLines ? 'Original' : 'Modify'}
-			</button> -->
 			<div slot="body">
 				<div class="plan-selector">
 					<select bind:value={plan}>
@@ -443,9 +440,6 @@
 		</Panel>
 
 		<Panel panelName="plan2" {panels} {togglePanel}>
-			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
-				{changingLines ? 'Original' : 'Modify'}
-			</button> -->
 			<div slot="body">
 				<div class="plan-selector">
 					<select bind:value={plan2}>
