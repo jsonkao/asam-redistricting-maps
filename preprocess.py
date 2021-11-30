@@ -1,6 +1,6 @@
 import sys, json
 
-FIPSES = ["36047", "36061", "36081"]
+FIPSES = ["36047", "36061", "36081", "36005", "36085"]
 
 
 def compress_topojson():

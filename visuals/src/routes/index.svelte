@@ -137,7 +137,7 @@
 		// points = promises[1];
 		viewCutoff = data.length;
 
-		showModal = !presentationMode;
+		// showModal = !presentationMode;
 	});
 
 	let lastDistrict;

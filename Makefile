@@ -225,7 +225,7 @@ crosswalk/crosswalk.csv: crosswalk/crosswalk.R crosswalk/nhgis_blk2010_blk2020.c
 	Rscript $< $@
 
 # Same as original block crosswalk but filtered down to areas of interest
-crosswalk/nhgis_blk2010_blk2020.csv: crosswalk/nhgis_blk2010_blk2020_ge_36.csv
+crosswalk/nhgis_blk2010_blk2020.csv: crosswalk/nhgis_blk2010_blk2020_ge_36.csv preprocess.py
 	cat $< | python3 preprocess.py -filter-crosswalk > $@
 
 # I manually downloaded the zipfile from https://www.nhgis.org/geographic-crosswalks

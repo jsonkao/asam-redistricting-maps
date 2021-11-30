@@ -26,7 +26,7 @@ interpolate <- function(data) {
     mutate(value = round(value, 1))
 }
 
-county <- c("Kings", "New York", "Queens")
+county <- c("Kings", "New York", "Queens", "Bronx", "Richmond")
 
 #' # Decennial population data; commented out bc we only care about CVAP populations now
 
@@ -93,7 +93,7 @@ cvap19_bg20 <- read_cvap("./cvap/CVAP_2019.csv")
 #' - Education: B28006 = Educational Attainment By Presence Of A Computer And Types Of Internet Subscription In Household
 #' - Government benefits: B19123 = Family Size By Cash Public Assistance Income Or Households Receiving Food Stamps/Snap Benefits In The Past 12 Months
 
-get_acs_brooklyn <- function(vars, name = "", geo = "block group") {
+get_acs_nyc <- function(vars, name = "", geo = "block group") {
   data <- get_acs(
     geography = geo,
     state = "New York",
@@ -114,25 +114,25 @@ get_acs_brooklyn <- function(vars, name = "", geo = "block group") {
   }
 }
 
-hhlang <- get_acs_brooklyn(c(total = "C16002_001", asian = "C16002_010"), "hhlang") # 'asian' means API language HHs with LEP
+hhlang <- get_acs_nyc(c(total = "C16002_001", asian = "C16002_010"), "hhlang") # 'asian' means API language HHs with LEP
 
-income <- get_acs_brooklyn(c(total = "B19013_001"), "income")
+income <- get_acs_nyc(c(total = "B19013_001"), "income")
 
 # TODO: incorporate internet subscription and presence of a computer
-education <- get_acs_brooklyn(c(total = "B28006_001", no_hs = "B28006_002", hs_grad = "B28006_008", ba_above = "B28006_014"), "graduates")
+education <- get_acs_nyc(c(total = "B28006_001", no_hs = "B28006_002", hs_grad = "B28006_008", ba_above = "B28006_014"), "graduates")
 
-benefits <- get_acs_brooklyn(c(total = "B19123_001", benefits = "B19123_002"), "families")
+benefits <- get_acs_nyc(c(total = "B19123_001", benefits = "B19123_002"), "families")
 
 #' # ACS Data I'm fine with at the tract level
 
 # TODO: B05007: Place Of Birth By Year Of Entry By Citizenship Status For The Foreign-Born Population
 
-entry <- get_acs_brooklyn(
+entry <- get_acs_nyc(
   c(total = "B05007_027", `2010_later` = "B05007_028", `2000_2009` = "B05007_031", `1990_1999` = "B05007_034", `1990_earlier` = "B05007_037"),
   "asiaentry",
   "tract"
 )
-workers <- get_acs_brooklyn(c(total = "B08006_001", publictransport = "B08006_008", drove = "B08006_002"), "workers", "tract") 
+workers <- get_acs_nyc(c(total = "B08006_001", publictransport = "B08006_008", drove = "B08006_002"), "workers", "tract") 
 
 #' # Consolidate static variables
 
