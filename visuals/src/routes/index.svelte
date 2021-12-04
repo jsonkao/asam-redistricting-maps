@@ -103,7 +103,7 @@
 		idToIndex,
 		points;
 
-	let showStreets, showModal, showStreetsCheckbox;
+	let showStreets, showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
 	let drawing, dragging, changingLines, pointing;
@@ -114,6 +114,7 @@
 	let stats = {};
 	let presentationMode = false;
 	let isolate = false;
+	let showPluralities = true;
 
 	let panels = ['plan'];
 
@@ -183,8 +184,6 @@
 			  !staticVars.includes(metric) ||
 			  metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
 			  (breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
-
-	let showPluralities = false;
 
 	function color({ properties: d }) {
 		if (metric === null) {

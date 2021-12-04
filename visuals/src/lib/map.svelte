@@ -89,11 +89,25 @@
 					type: 'fill',
 					source: 'census',
 					paint: {
-						'fill-color': getCensusFills()
+						'fill-color': getCensusFills(),
 					}
 				},
 				'parks'
 			);
+			/*
+			map.addLayer(
+				{
+					id: 'census_lines',
+					type: 'line',
+					source: 'census',
+					paint: {
+						'line-color': 'purple',
+						'line-width': 1,
+					}
+				},
+				'parks'
+			);
+			*/
 
 			const plansGeojsons = {};
 			allPlans.forEach((k) => {
@@ -223,6 +237,14 @@
 					});
 				}
 			});
+			let total_total = 0;
+			let total_asian = 0;
+			map.on('contextmenu', e => {
+				const { pop20_total, pop20_asian } = map.queryRenderedFeatures(e.point).filter(f => f.layer.id === "census")[0].properties;
+				total_total += pop20_total;
+				total_asian += pop20_asian;
+				console.log(total_total, total_asian)
+			})
 		});
 	});
 
