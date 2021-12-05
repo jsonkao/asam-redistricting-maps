@@ -116,10 +116,10 @@
 	let isolate = false;
 	let showPluralities = true;
 
-	let panels = ['plan'];
+	let panels = [];
 
-	let plan = 'assembly';
-	let plan2 = 'assembly_unity';
+	let plan = 'senate_letters';
+	let plan2 = 'senate_unity';
 	let bgMesh, congressPlans, streets;
 	let plans;
 

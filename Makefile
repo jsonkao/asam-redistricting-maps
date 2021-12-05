@@ -120,13 +120,15 @@ mapping/tl_2021_36_bg.zip:
 # UNITY MAPS
 # - "unity/UnityMappingAssemblyDistrict 2021-11-04.json" was manually downloaded; spaces manually replaced with underscores
 
-unity/senate_unity.geojson: unity/Unity_Mapping_Senate_Districts_2021-11-04.shp
-	mapshaper $< \
-	-filter-fields DISTRICT \
-	-rename-fields senate_unity=DISTRICT \
+unity/senate_unity.geojson: unity/um_senate_1118.json
+	jq 'del(.name, .map_layer_type, .bounds, .center, .zoom, .median_zoom, .count, .property_names)' $< \
+	| mapshaper -i - \
+	-filter 'District !== null' \
+	-filter-fields District \
+	-rename-fields senate_unity=District \
 	-o $@
 
-unity/assembly_unity.geojson: unity/UnityMappingAssemblyDistrict_2021-11-04.json
+unity/assembly_unity.geojson: unity/um_assembly.json
 	jq 'del(.name, .map_layer_type, .bounds, .center, .zoom, .median_zoom, .count, .property_names)' $< \
 	| mapshaper -i - \
 	-filter 'District !== null' \

@@ -78,7 +78,7 @@
 			container: 'map',
 			style: 'mapbox://styles/jsonkao/ckvnu5tpy6coj14uizvyf1wuf/draft',
 			center: [-73.967, 40.72],
-			zoom: 12
+			zoom: 11
 		});
 
 		map.on('load', async () => {
@@ -254,7 +254,7 @@
 		if (loaded) {
 			allPlans.forEach((p) => {
 				const isPlan2 = panels.includes('plan2') && p === plan2;
-				const visibility = p === plan || isPlan2 ? 'visible' : 'none';
+				const visibility = panels.includes('plan') && p === plan || isPlan2 ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);

@@ -3,32 +3,22 @@
 #
 
 library(tidyverse)
-library(Ckmeans.1d.dp)
 
-# Plurality strength
-consolidated %>% 
-  filter(group != "total") %>% 
-  arrange(GEOID, -prop19) %>% 
-  group_by(GEOID) %>%
-  slice(c(1, 2)) %>% 
-  filter(!is.na(prop19)) %>% 
-  summarize(max = max(prop19), min = min(prop19), distance = max(prop19) - min(prop19)) %>%
-  ggplot(aes(distance)) +
-  geom_histogram() +
-  facet_wrap(~ max >= 0.5)
-  
-     
+data <- read.csv("./data/census.csv")
 
-# THE MISSING SHITS
-# 360470106022 seems to always be suppressed. Its neighbor, 360470116001, always has the data
+data %>%
+  filter("36047" == substr(GEOID, 1, 5)) %>%
+  select(GEOID,
+         senate_unity,
+         starts_with("pop20"),
+         starts_with("pop10")) %>%
+  mutate(in_group = senate_unity %in% c("G")) %>% 
+  pivot_longer(
+    starts_with("pop"),
+    names_to = c(".value", "group"),
+    names_pattern = "(.*)_(.*)"
+  ) %>%
+  group_by(in_group, group) %>%
+  summarize(pop10 = sum(pop10), pop20 = sum(pop20), pct_growth = (pop20 - pop10) / pop10)
 
-get_acs(
-  geography = "tract",
-  state = "New York",
-  county = "Kings",
-  variables = "B19013_001",
-  year = 2018,
-  survey = "acs5"
-) %>% filter(GEOID %in% c("360470106022", "360470116001") | GEOID %in% c("36047010602", "36047011600"))
-
-
+# Can this be right? Growth outside of G was 50%? I think it's right. Shied I needa change my argument then
