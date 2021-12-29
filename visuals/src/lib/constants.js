@@ -19,6 +19,7 @@ export const variablesLong = {
 	asiaentry: 'Dominant entry period for Asian families',
 	workers: 'Proportion of workers who take public transportation',
 	cvap: 'Citizen voting age population by race',
+	vap: 'Voting age population by race',
 	pop: 'Population by race' + (translate ? ' / 人口划分: 各种族群' : ''),
 };
 

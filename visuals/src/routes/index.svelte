@@ -8,12 +8,13 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
-		const topoData = await (await fetch(`${base}/output_census.topojson`)).json();
+		const topoData = await (await fetch(`${base}/output_census_wgs84.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
-		const data = feature(topoData, obj).features.map(reduceCoordinatePrecision);
+		const census = feature(topoData, obj);
+		const data = census.features; //.map(reduceCoordinatePrecision);
 
 		// Establish the static variables and the variables that change over time
-		const dynamicVars = ['pop', 'cvap'];
+		const dynamicVars = ['pop', 'vap', 'cvap'];
 		const staticVars = [
 			...data.reduce((acc, val) => {
 				const fields = Object.keys(val.properties)
@@ -43,7 +44,10 @@
 				staticVars,
 				idToIndex,
 				tractVars: ['asiaentry', 'workers'],
-				pluralityVars: ['asiaentry'] // Aside from race
+				pluralityVars: ['asiaentry'], // Aside from race
+				census,
+				plansTopo: await (await fetch(`${base}/plans.topojson`)).json(),
+				points: await (await fetch(`${base}/points.geojson`)).json()
 			}
 		};
 	}
@@ -84,33 +88,42 @@
 	import Tables from '$lib/tables.svelte';
 	import Panel from '$lib/panel.svelte';
 	import Modal from '$lib/modal.svelte';
+	import Map from '$lib/map.svelte';
 
 	export let topoData,
 		obj,
 		neighbors,
+		census,
+		plansTopo,
 		data,
 		dynamicVars,
 		staticVars,
 		tractVars,
 		pluralityVars,
-		idToIndex;
+		idToIndex,
+		points;
 
-	let showStreets, showModal, showStreetsCheckbox;
+	let showStreets, showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
-	let drawing, dragging, changingLines;
+	let drawing, dragging, changingLines, pointing;
 	let fetchedDrawings;
 	let draggedBgs = [];
 	let drawings = [];
 	let aggregates = [];
 	let stats = {};
 	let presentationMode = false;
+	let isolate = false;
+	let showPluralities = true;
 
-	let panels = ['plans', 'views'];
+	let panels = [];
 
-	let plan = 'assembly';
-	let bgMesh, congressPlans, points, streets;
+	let plan = 'senate_letters';
+	let plan2 = 'senate_unity';
+	let bgMesh, congressPlans, streets;
 	let plans;
+
+	let opacity = .75;
 
 	let containerFont = presentationMode ? 24 : 18;
 	let clientWidth;
@@ -124,12 +137,12 @@
 	const closeModal = () => (showModal = false);
 	onMount(async () => {
 		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
-		const promises = await Promise.all([getPlansMeshes(), getPoints()]);
+		const promises = await Promise.all([getPlansMeshes()]);
 		plans = promises[0];
-		points = promises[1];
+		// points = promises[1];
 		viewCutoff = data.length;
 
-		showModal = !presentationMode;
+		// showModal = !presentationMode;
 	});
 
 	let lastDistrict;
@@ -145,14 +158,17 @@
 	}
 
 	let period = 'present';
-	let variable = 'pop';
+	let variable = 'vap';
 	$: metric = staticVars.includes(variable)
 		? variable
-		: variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20);
+		: variable
+		? variable + (period === 'past' ? 10 : variable === 'cvap' ? 19 : 20)
+		: variable;
 
 	const breaksCache = {
 		pop: [0, 0.1, 0.2, 0.4, 0.6],
-		cvap: [0, 0.1, 0.2, 0.4, 0.6]
+		cvap: [0, 0.1, 0.2, 0.4, 0.6],
+		vap: [0, 0.1, 0.2, 0.4, 0.6]
 	};
 	$: getValue = {
 		income: (d) => d[metric],
@@ -169,26 +185,28 @@
 			  metric === 'asiaentry' || // Don't compute breaks for dynamic and tract variables
 			  (breaksCache[metric] = ckmeans(data.map((f) => getValue(f.properties)).filter(isNum), 6));
 
-	let showPluralities = false;
-
 	function color({ properties: d }) {
-		if (!d.ALAND) return '#fff';
+		if (metric === null) {
+			console.trace();
+			return null;
+		}
+		if (!d.ALAND) return 'rgba(0, 0, 0, 0)';
 		const total = d[`${metric}_total`];
 
 		if (pluralityVars.includes(metric)) {
 			const p = (g) => d[`${metric}_${g}`];
-			if (p(periods[0]) === null) return '#eee';
+			if (p(periods[0]) === null) return 'rgba(0, 0, 0, 0)';
 			const pluralities = [...periods].sort((a, b) => p(b) - p(a));
 			return schemeBlues[periods.indexOf(pluralities[0])];
 		} else if (staticVars.includes(metric)) {
-			if (!isNum(getValue(d))) return '#eee';
-			if (total <= 10) return '#fff';
+			if (!isNum(getValue(d))) return 'rgba(0, 0, 0, 0)';
+			if (total <= 10) return 'rgba(0, 0, 0, 0)';
 			for (let i = 1; i < breaks.length; i++) {
 				if (getValue(d) < breaks[i]) return schemeBlues[i];
 			}
 			return schemeBlues[breaks.length - 1];
 		} else {
-			if (total <= 10) return '#fff';
+			if (total <= 10) return 'rgba(0, 0, 0, 0)';
 			const p = (g) => d[`${metric}_${g}`] / d[`${metric}_total`];
 
 			if (showPluralities) {
@@ -231,7 +249,7 @@
 		}
 	}
 
-	$: plan.startsWith('congress') && congressPlans === undefined && loadCongressMeshes();
+	$: (plan + plan2).includes('congress') && congressPlans === undefined && loadCongressMeshes();
 	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
 
 	$: showStreets && streets === undefined && loadStreets();
@@ -258,7 +276,7 @@
 			pct_increase: (new_asian - old_asian) / old_asian,
 			pct_increase_cvap: (new_asiancvap - old_asiancvap) / old_asiancvap
 		};
-		['pop20', 'cvap19', 'pop10', 'cvap10'].forEach((m) =>
+		['pop20', 'vap20', 'cvap19', 'pop10', 'vap10', 'cvap10'].forEach((m) =>
 			groups.forEach((g) => (output[m + g] = prop(m, g)))
 		);
 		return output;
@@ -295,24 +313,27 @@
 	const togglePanel = (p) =>
 		(panels = panels.includes(p) ? panels.filter((x) => x !== p) : [...panels, p]);
 
-	$: labelSize =
-		((plan.endsWith('_names') ? 0.9 : 1.1) / ((clientWidth - 410) / viewBox[2])) *
-		(presentationMode ? 1.24 : 1.1);
-
 	$: {
 		for (let i = 0; i < aggregates.length; i++) {
 			const [aPlan, aDistrict] = aggregates[i].split(',');
-			if (aPlan === plan /* && !(aggregates[i] in stats) */) {
+			if (aPlan === plan || aPlan === plan2 /* && !(aggregates[i] in stats) */) {
 				stats[aggregates[i]] = getStats(
-					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[plan])
+					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[aPlan])
 				);
 			}
 		}
 	}
 
-	function handleLabelClick(id) {
-		if (aggregates.includes(id)) aggregates = aggregates.filter((a) => a !== id);
-		else aggregates = [...aggregates, id];
+	function handleLabelClick(id, forceInclusion = false, forceExclusion = false) {
+		if (aggregates.includes(id)) {
+			if (!forceInclusion) {
+				aggregates = aggregates.filter((a) => a !== id);
+			}
+		} else {
+			if (!forceExclusion) {
+				aggregates = [...aggregates, id];
+			}
+		}
 	}
 
 	const startDrag = () => (dragging = true);
@@ -322,7 +343,10 @@
 		dragging &&
 		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
 
+	const togglePointing = () => (pointing = !pointing);
 	function handleKeydown({ key }) {
+		if (key === ' ') togglePointing();
+		if (key === 'i') isolate = !isolate;
 		if (!presentationMode) return;
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
@@ -347,8 +371,11 @@
 	<div class="controls">
 		<select
 			bind:value={variable}
-			style="width: {staticVars.includes(variable) ? 'auto' : 'calc(var(--control-width) + 45px)'}"
+			style="width: {staticVars.includes(variable)
+				? 'auto'
+				: 'calc(var(--control-width) + 45px * 0)'}"
 		>
+			<option value={null}>Select data</option>
 			<optgroup label="Redistricting data">
 				{#each dynamicVars as v}
 					<option value={v}>{variablesLong[v] || v}</option>
@@ -374,29 +401,28 @@
 
 				{#if dynamicVars.includes(variable)}
 					<button class="plurality-toggle" on:click={() => (showPluralities = !showPluralities)}>
-						Show {showPluralities ? 'pct. asian' : 'all race and ethniticies'}
+						Show {showPluralities ? 'pct. asian' : 'all races and ethniticies'}
 					</button>
 				{/if}
 			</div>
 		{/if}
 
-		<Legend
-			{groups}
-			{levels}
-			{colors}
-			{dynamicVars}
-			{variable}
-			{metric}
-			{showPluralities}
-			{pluralityVars}
-			{periods}
-			{breaks}
-		/>
+		{#if metric !== null}
+			<Legend
+				{groups}
+				{levels}
+				{colors}
+				{dynamicVars}
+				{variable}
+				{metric}
+				{showPluralities}
+				{pluralityVars}
+				{periods}
+				{breaks}
+			/>
+		{/if}
 
-		<Panel panelName="plans" {panels} {togglePanel}>
-			<!-- <button slot="title" class="subbutton" on:click={() => (changingLines = !changingLines)}>
-				{changingLines ? 'Original' : 'Modify'}
-			</button> -->
+		<Panel panelName="plan" {panels} {togglePanel}>
 			<div slot="body">
 				<div class="plan-selector">
 					<select bind:value={plan}>
@@ -426,7 +452,40 @@
 			</div>
 		</Panel>
 
-		<Panel panelName="views" {panels} {togglePanel}>
+		<Panel panelName="plan2" {panels} {togglePanel}>
+			<div slot="body">
+				<div class="slider">
+					<input type="range" bind:value={opacity} min=0 max=1.5 step=0.01>
+				</div>
+				<div class="plan-selector">
+					<select bind:value={plan2}>
+						{#each ['assembly', 'senate', 'congress'] as scope}
+							<optgroup label={capitalize(scope)}>
+								{#each ['', '_letters', '_names', '_unity'] as proposal}
+									{#if scope + proposal !== 'congress_unity'}
+										<option value={scope + proposal}>
+											{planDesc(scope + proposal)}
+										</option>
+									{/if}
+								{/each}
+							</optgroup>
+						{/each}
+					</select>
+				</div>
+				<Tables
+					{aggregates}
+					{handleLabelClick}
+					plan={plan2}
+					{stats}
+					{groups}
+					{changingLines}
+					{idealValues}
+					{variable}
+				/>
+			</div>
+		</Panel>
+
+		<!-- <Panel panelName="views" {panels} {togglePanel}>
 			<div slot="body" class="views">
 				<select bind:value={view}>
 					{#each Object.keys(views) as v}
@@ -434,10 +493,10 @@
 					{/each}
 				</select>
 				{#if showStreetsCheckbox}
-				<label>
-					<input type="checkbox" bind:checked={showStreets} />
-					Inspect streets
-				</label>
+					<label>
+						<input type="checkbox" bind:checked={showStreets} />
+						Inspect streets
+					</label>
 				{/if}
 			</div>
 		</Panel>
@@ -452,12 +511,14 @@
 					</button>
 				</div>
 			</Panel>
-		{/if}
+		{/if} -->
 	</div>
 
-	<Svg
+	<Map
 		{viewBox}
-		{labelSize}
+		{plansTopo}
+		{census}
+		{pointing}
 		{draggedBgs}
 		{data}
 		{path}
@@ -466,18 +527,22 @@
 		{neighbor}
 		{showPluralities}
 		{metric}
+		{opacity}
 		{period}
 		{tractVars}
 		{panels}
 		{drawings}
 		{plan}
+		{plan2}
 		{points}
 		{tractMesh}
 		{bgMesh}
 		{mesh}
 		{aggregates}
 		{obj}
+		{togglePointing}
 		{handleLabelClick}
+		{isolate}
 		{congressPlans}
 		{plans}
 		{startDrag}
@@ -518,7 +583,11 @@
 		position: fixed;
 		max-width: var(--control-width);
 		top: 22px;
-		padding-left: 15px;
+		left: 22px;
+		padding: 15px;
+		background: #fff;
+		z-index: 1;
+		box-shadow: 0px 2px 5px #0006;
 	}
 
 	.community {

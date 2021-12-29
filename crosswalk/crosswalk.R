@@ -16,7 +16,7 @@ census_api_key('b0c03e2d243c837b10d7bb336a998935c35828af')
 #'
 #' First, retrieve block-level population data in 2010.
 
-county <- c("Kings", "New York", "Queens")
+county <- c("Kings", "New York", "Queens", "Bronx", "Richmond")
 blk_pop_2010 <- get_decennial(
   geography = "block",
   state = "New York",

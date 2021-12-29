@@ -148,6 +148,17 @@
 			});
 		}
 	}
+
+	$: {
+		if (loaded) {
+			const matchExp = ['match', ['get', 'GEOID']];
+			census.features.forEach((f) => {
+				matchExp.push(f.properties.GEOID, color(f, metric));
+			});
+			matchExp.push('rgba(0, 0, 0, 0)');
+			map.setPaintProperty("census", "fill-color", matchExp);
+		}
+	}
 </script>
 
 <svelte:head>
