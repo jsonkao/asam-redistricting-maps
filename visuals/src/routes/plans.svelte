@@ -1,12 +1,11 @@
 <script context="module">
 	import { base } from '$app/paths';
 	import { feature } from 'topojson-client';
-	import { unpackAttributes, getPoints } from '$lib/utils';
+	import { unpackAttributes } from '$lib/utils';
 
 	export async function load({ fetch }) {
 		const req = await fetch(`${base}/plans.topojson`);
 		const req1 = await fetch(`${base}/output_census_wgs84.topojson`);
-		// const req2 = await (await getPoints()).json();
 
 		const topo = await req1.json();
 		const obj = unpackAttributes(topo.objects.census);
