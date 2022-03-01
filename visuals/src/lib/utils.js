@@ -135,3 +135,13 @@ export function hexToRGB(hex) {
 			return "rgb(" + r + ", " + g + ", " + b + ")";
 	}
 }
+
+export function readCSV(text) {
+	const rows = text.split('\n');
+	const keys = rows.shift().split(',');
+	return rows.map(row => row.split(',')).map(row => keys.reduce((acc, key, i) => {
+		acc[key] = row[i];
+		if (key.includes('vap') || key.includes('pop')) acc[key] = +acc[key];
+		return acc;
+	}, {}))
+}

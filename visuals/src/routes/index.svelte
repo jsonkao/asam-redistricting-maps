@@ -1,6 +1,6 @@
 <script context="module">
-	import { feature, neighbors as topoNeighbors, mesh as topoMesh } from 'topojson-client';
-	import { unpackAttributes, reduceCoordinatePrecision } from '$lib/utils';
+	import { feature, mesh as topoMesh } from 'topojson-client';
+	import { unpackAttributes, reduceCoordinatePrecision, readCSV } from '$lib/utils';
 	import { base } from '$app/paths';
 
 	/**
@@ -8,11 +8,11 @@
 	 */
 	export async function load({ fetch }) {
 		// Fetch TopoJSON data; do necessary transformations
+		const censusData = readCSV(await (await fetch(`${base}/data.csv`)).text());
 		const topoData = await (await fetch(`${base}/output_census_wgs84.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
 		const census = feature(topoData, obj);
 		const data = census.features; //.map(reduceCoordinatePrecision);
-		console.log(data);
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['pop', 'vap', 'cvap'];
@@ -37,10 +37,10 @@
 
 		return {
 			props: {
+				censusData,
 				topoData,
 				obj,
 				data,
-				neighbors: topoNeighbors(obj.geometries),
 				dynamicVars,
 				staticVars,
 				idToIndex,
@@ -84,16 +84,15 @@
 	} from '$lib/constants';
 	import { polygonCentroid } from 'd3-polygon';
 	import { onMount } from 'svelte';
-	import Svg from '$lib/svg.svelte';
 	import Legend from '$lib/legend.svelte';
 	import Tables from '$lib/tables.svelte';
 	import Panel from '$lib/panel.svelte';
 	import Modal from '$lib/modal.svelte';
 	import Map from '$lib/map.svelte';
 
-	export let topoData,
+	export let censusData,
+		topoData,
 		obj,
-		neighbors,
 		census,
 		plansTopo,
 		data,
@@ -145,18 +144,6 @@
 
 		// showModal = !presentationMode;
 	});
-
-	let lastDistrict;
-	const getDistrict = (i) => data[i].properties[plan];
-	function neighbor(i) {
-		const selfD = getDistrict(i);
-		const districts = new Set(neighbors[i].map(getDistrict).filter((d) => d !== selfD));
-		if (districts.size === 1)
-			obj.geometries[i].properties[plan] = lastDistrict = districts.values().next().value;
-		else if (districts.has(lastDistrict)) obj.geometries[i].properties[plan] = lastDistrict;
-		else return;
-		obj = obj;
-	}
 
 	let period = 'present';
 	let variable = 'vap';
@@ -283,16 +270,6 @@
 		return output;
 	}
 
-	const delDrawing = (i) => (drawings = drawings.filter((_, j) => j !== i));
-
-	async function save() {
-		try {
-			await fetch(`${base}/data.json`, { method: 'POST', body: JSON.stringify(drawings) });
-		} catch (e) {
-			console.error(e);
-		}
-	}
-
 	$: {
 		if (panels.includes('communities') && !fetchedDrawings) {
 			fetchDrawings();
@@ -319,7 +296,7 @@
 			const [aPlan, aDistrict] = aggregates[i].split(',');
 			if (aPlan === plan || aPlan === plan2 /* && !(aggregates[i] in stats) */) {
 				stats[aggregates[i]] = getStats(
-					obj.geometries.filter(({ properties: d }) => aDistrict === '' + d[aPlan])
+					censusData.filter(d => aDistrict === '' + d[aPlan])
 				);
 			}
 		}
@@ -525,7 +502,6 @@
 		{path}
 		{color}
 		{changingLines}
-		{neighbor}
 		{showPluralities}
 		{metric}
 		{opacity}
