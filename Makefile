@@ -137,6 +137,29 @@ unity/assembly_unity.geojson: unity/um_assembly.json
 	-o $@
 
 #
+# LATFOR MAPS
+#
+
+latfor: latfor/senate_latfor.geojson latfor/assembly_latfor.geojson
+
+latfor/senate_latfor.geojson: latfor/Senate22.shp
+	mapshaper $< -rename-fields senate_latfor=DISTRICT -o $@
+
+latfor/assembly_latfor.geojson: latfor/Assembly22.shp
+	mapshaper $< -rename-fields assembly_latfor=ID -o $@
+
+latfor/Senate22.shp:
+	curl -o latfor/2022senate_shape_file.zip -L https://latfor.state.ny.us/maps/2022senate/2022senate_shape_file.zip
+	unzip -d latfor latfor/2022senate_shape_file.zip
+	touch $@
+	rm latfor/2022senate_shape_file.zip
+
+latfor/Assembly22.shp:
+	curl -o latfor/2022assembly_shape_file.zip -L https://latfor.state.ny.us/maps/2022assembly/2022assembly_shape_file.zip
+	unzip -d latfor latfor/2022assembly_shape_file.zip
+	touch $@
+	rm latfor/2022assembly_shape_file.zip
+#
 # DATA
 # - The data that goes into mapping ifles
 #
