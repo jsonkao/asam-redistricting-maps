@@ -65,9 +65,7 @@
 		xor,
 		planDesc,
 		path,
-		getPoints,
-		getPlansMeshes,
-		getStreets
+		getPlansMeshes
 	} from '$lib/utils';
 	import {
 		colors,
@@ -101,11 +99,10 @@
 		idToIndex,
 		points;
 
-	let showStreets, showModal;
+	let showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
 	let drawing, dragging, changingLines, pointing;
-	let fetchedDrawings;
 	let draggedBgs = [];
 	let drawings = [];
 	let aggregates = [];
@@ -118,7 +115,6 @@
 
 	let plan = 'senate_letters';
 	let plan2 = 'senate_unity';
-	let bgMesh, streets;
 	let plans;
 
 	let opacity = 0.75;
@@ -130,11 +126,9 @@
 	$: viewBox = views[view];
 
 	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
-	const tractMesh = path(mesh((a, b) => id(a).substring(0, 11) !== id(b).substring(0, 11)));
 
 	const closeModal = () => (showModal = false);
 	onMount(async () => {
-		bgMesh = path(reduceCoordinatePrecision(mesh((a, b) => id(a) !== id(b))));
 		const promises = await Promise.all([getPlansMeshes()]);
 		plans = promises[0];
 		// points = promises[1];
@@ -234,9 +228,6 @@
 			draggedBgs = [];
 		}
 	}
-
-	$: showStreets && streets === undefined && loadStreets();
-	const loadStreets = async () => (streets = await getStreets());
 
 	function getStats(input) {
 		const data1 = input;
@@ -480,9 +471,6 @@
 		{plan}
 		{plan2}
 		{points}
-		{tractMesh}
-		{bgMesh}
-		{mesh}
 		{aggregates}
 		{obj}
 		{togglePointing}
@@ -494,8 +482,6 @@
 		{handleMouseMove}
 		{viewCutoff}
 		{showOnlyFocusDistricts}
-		{showStreets}
-		{streets}
 		{presentationMode}
 	/>
 
