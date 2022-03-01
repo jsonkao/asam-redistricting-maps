@@ -19,6 +19,13 @@ main: visuals/static/output_census_wgs84.topojson visuals/static/points.geojson 
 
 # For Mapbox
 
+# Non-geographic data source
+visuals/static/data.csv: mapping/census.geojson
+	mapshaper $< \
+	-drop fields=ALAND,IDEAL_VALU \
+	-o $@
+
+
 visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	mapshaper $< \
 	-simplify 22% \
@@ -83,12 +90,10 @@ plans/current.zip:
 
 #
 # MAPPING:
-# - Join block group shapefile with data about Asian population
+# - Join blocks shapefile with demographic data
 #
 
 # Filter geography down; join it with census data
-# TODO: join with plans
-# -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
 mapping/census.geojson: mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp data/data.csv
 	mapshaper $< \
 	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP20)" \
