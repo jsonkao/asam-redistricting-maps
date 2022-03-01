@@ -12,6 +12,7 @@
 		const obj = unpackAttributes(topoData.objects.census);
 		const census = feature(topoData, obj);
 		const data = census.features; //.map(reduceCoordinatePrecision);
+		console.log(data);
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['pop', 'vap', 'cvap'];
