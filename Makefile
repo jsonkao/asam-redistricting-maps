@@ -89,9 +89,10 @@ plans/current.zip:
 # Filter geography down; join it with census data
 # TODO: join with plans
 # -join "$(filter-out $<,$^)" fields=DISTRICT largest-overlap
-mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
+mapping/census.geojson: mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp data/data.csv
 	mapshaper $< \
-	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP)" \
+	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP20)" \
+	-rename-fields GEOID=GEOID20,ALAND=ALAND20 \
 	-filter-fields GEOID,ALAND \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
 	-join plans/senate.geojson largest-overlap \
@@ -100,21 +101,20 @@ mapping/census.geojson: mapping/tl_2021_36_bg/tl_2021_36_bg.shp data/data.csv
 	-join plans/assembly.geojson largest-overlap \
 	-join plans/assembly_letters.geojson largest-overlap \
 	-join plans/assembly_names.geojson largest-overlap \
-	-join plans/congress.geojson largest-overlap \
-	-join plans/congress_letters.geojson largest-overlap \
-	-join plans/congress_names.geojson largest-overlap \
 	-join unity/assembly_unity.geojson largest-overlap \
 	-join unity/senate_unity.geojson largest-overlap \
+	-join latfor/assembly_latfor.geojson largest-overlap \
+	-join latfor/senate_latfor.geojson largest-overlap \
 	-o bbox $@
 
-mapping/tl_2021_36_bg/tl_2021_36_bg.shp: mapping/tl_2021_36_bg.zip
+mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp: mapping/tl_2021_36_tabblock20.zip
 	unzip -d $(dir $@) $<
 	touch $@
 
 # Zipfile downloaded from Census TIGER/Line FTP server
-mapping/tl_2021_36_bg.zip:
+mapping/tl_2021_36_tabblock20.zip:
 	mkdir -p mapping
-	curl -L https://www2.census.gov/geo/tiger/TIGER2021/BG/tl_2021_36_bg.zip -o $@
+	curl -L https://www2.census.gov/geo/tiger/TIGER2021/TABBLOCK20/tl_2021_36_tabblock20.zip -o $@
 
 #
 # UNITY MAPS
