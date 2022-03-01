@@ -14,7 +14,7 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 #
 
 
-main: visuals/static/output_census_wgs84.topojson visuals/static/points.geojson visuals/static/plans.topojson
+main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
 
 
 # For Mapbox
@@ -22,7 +22,7 @@ main: visuals/static/output_census_wgs84.topojson visuals/static/points.geojson 
 # Non-geographic data source
 visuals/static/data.csv: mapping/census.geojson
 	mapshaper $< \
-	-drop fields=ALAND,IDEAL_VALU \
+	-drop fields=GEOID,ALAND,IDEAL_VALU \
 	-o $@
 
 
@@ -34,7 +34,7 @@ visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	| python3 preprocess.py -compress-topo \
 	> $@
 
-visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson unity/assembly_unity.geojson unity/senate_unity.geojson
+visuals/static/plans.topojson: plans/senate_letters.geojson plans/senate_names.geojson plans/assembly_letters.geojson plans/assembly_names.geojson plans/senate.geojson plans/assembly.geojson unity/assembly_unity.geojson unity/senate_unity.geojson latfor/assembly_latfor.geojson latfor/senate_latfor.geojson
 	mapshaper -i $^ combine-files \
 	-clean \
 	-simplify 22% \

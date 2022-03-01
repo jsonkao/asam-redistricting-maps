@@ -29,7 +29,6 @@
 		opacity,
 		obj,
 		handleLabelClick,
-		congressPlans,
 		togglePointing,
 		// plans,
 		startDrag,
@@ -48,10 +47,12 @@
 		'assembly_letters',
 		'assembly_names',
 		'assembly_unity',
+		'assembly_latfor',
 		'senate',
 		'senate_letters',
 		'senate_names',
-		'senate_unity'
+		'senate_unity',
+		'senate_latfor'
 	];
 
 	function getCensusFills() {
@@ -115,10 +116,6 @@
 				plansGeojsons[k] = {
 					type: 'FeatureCollection',
 					features: data.features.map((f) => {
-						if (k === 'senate_unity' && f.properties[k] in corrections) {
-							console.log(k, f.properties)
-							f.properties[k] = `${corrections[f.properties[k]]} (${f.properties[k]})`;
-						}
 						return { ...f, id: f.properties[k] }
 					})
 				};

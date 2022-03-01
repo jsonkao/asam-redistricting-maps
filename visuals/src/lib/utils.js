@@ -29,7 +29,7 @@ export const planTitle = (a) => {
 
 export const planDesc = (plan) => {
 	const words = plan.split('_');
-	return (words.length === 1 ? 'Current ' : `“${capitalize(words[1])}” `) + capitalize(words[0]);
+	return (words.length === 1 ? 'Current ' : `“${words[1] === 'latfor' ? 'LATFOR' : capitalize(words[1])}” `) + capitalize(words[0]);
 };
 
 export function unpackAttributes(obj) {

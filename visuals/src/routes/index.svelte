@@ -21,9 +21,8 @@
 				const fields = Object.keys(val.properties)
 					.filter(
 						(k) =>
-							[...dynamicVars, 'GEOID', 'senate', 'assembly', 'congress'].every(
-								(v) => !k.includes(v)
-							) && k === k.toLowerCase()
+							[...dynamicVars, 'GEOID', 'senate', 'assembly'].every((v) => !k.includes(v)) &&
+							k === k.toLowerCase()
 					)
 					.map((k) => k.split('_')[0]);
 				return new Set([...acc, ...fields]);
@@ -68,7 +67,6 @@
 		path,
 		getPoints,
 		getPlansMeshes,
-		getCongressMeshes,
 		getStreets
 	} from '$lib/utils';
 	import {
@@ -120,10 +118,10 @@
 
 	let plan = 'senate_letters';
 	let plan2 = 'senate_unity';
-	let bgMesh, congressPlans, streets;
+	let bgMesh, streets;
 	let plans;
 
-	let opacity = .75;
+	let opacity = 0.75;
 
 	let containerFont = presentationMode ? 24 : 18;
 	let clientWidth;
@@ -237,17 +235,11 @@
 		}
 	}
 
-	$: (plan + plan2).includes('congress') && congressPlans === undefined && loadCongressMeshes();
-	const loadCongressMeshes = async () => (congressPlans = await getCongressMeshes());
-
 	$: showStreets && streets === undefined && loadStreets();
 	const loadStreets = async () => (streets = await getStreets());
 
 	function getStats(input) {
-		const data1 =
-			typeof input[0] === 'string'
-				? input.map((id) => data[idToIndex[id]].properties)
-				: input.map((f) => f.properties);
+		const data1 = input;
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
 		const wMean = (m) => sum(m, 'pop20_total') / sum('pop20_total');
 		const prop = (m, subgroup) => sum(`${m}_${subgroup}`) / sum(`${m}_total`);
@@ -270,24 +262,6 @@
 		return output;
 	}
 
-	$: {
-		if (panels.includes('communities') && !fetchedDrawings) {
-			fetchDrawings();
-			fetchedDrawings = true;
-		}
-	}
-	async function fetchDrawings() {
-		try {
-			const req = await fetch(`${base}/data.json`);
-			drawings = (await req.json()).map((r) => ({
-				...r,
-				stats: getStats(r.ids)
-			}));
-		} catch (e) {
-			console.error(e);
-		}
-	}
-
 	const togglePanel = (p) =>
 		(panels = panels.includes(p) ? panels.filter((x) => x !== p) : [...panels, p]);
 
@@ -295,9 +269,7 @@
 		for (let i = 0; i < aggregates.length; i++) {
 			const [aPlan, aDistrict] = aggregates[i].split(',');
 			if (aPlan === plan || aPlan === plan2 /* && !(aggregates[i] in stats) */) {
-				stats[aggregates[i]] = getStats(
-					censusData.filter(d => aDistrict === '' + d[aPlan])
-				);
+				stats[aggregates[i]] = getStats(censusData.filter((d) => aDistrict === '' + d[aPlan]));
 			}
 		}
 	}
@@ -404,14 +376,12 @@
 			<div slot="body">
 				<div class="plan-selector">
 					<select bind:value={plan}>
-						{#each ['assembly', 'senate', 'congress'] as scope}
+						{#each ['assembly', 'senate'] as scope}
 							<optgroup label={capitalize(scope)}>
-								{#each ['', '_letters', '_names', '_unity'] as proposal}
-									{#if scope + proposal !== 'congress_unity'}
-										<option value={scope + proposal}>
-											{planDesc(scope + proposal)}
-										</option>
-									{/if}
+								{#each ['', '_letters', '_names', '_unity', '_latfor'] as proposal}
+									<option value={scope + proposal}>
+										{planDesc(scope + proposal)}
+									</option>
 								{/each}
 							</optgroup>
 						{/each}
@@ -433,18 +403,16 @@
 		<Panel panelName="plan2" {panels} {togglePanel}>
 			<div slot="body">
 				<div class="slider">
-					<input type="range" bind:value={opacity} min=0 max=1.5 step=0.01>
+					<input type="range" bind:value={opacity} min="0" max="1.5" step="0.01" />
 				</div>
 				<div class="plan-selector">
 					<select bind:value={plan2}>
-						{#each ['assembly', 'senate', 'congress'] as scope}
+						{#each ['assembly', 'senate'] as scope}
 							<optgroup label={capitalize(scope)}>
 								{#each ['', '_letters', '_names', '_unity'] as proposal}
-									{#if scope + proposal !== 'congress_unity'}
-										<option value={scope + proposal}>
-											{planDesc(scope + proposal)}
-										</option>
-									{/if}
+									<option value={scope + proposal}>
+										{planDesc(scope + proposal)}
+									</option>
 								{/each}
 							</optgroup>
 						{/each}
@@ -520,7 +488,6 @@
 		{togglePointing}
 		{handleLabelClick}
 		{isolate}
-		{congressPlans}
 		{plans}
 		{startDrag}
 		{endDrag}
