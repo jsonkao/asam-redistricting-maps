@@ -19,7 +19,7 @@ export const planTitle = (a) => {
 	const [plan, district] = a.split(',');
 	const words = plan.split('_');
 	return (
-		(words.length === 1 ? '' : `“${capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + district
+		(words.length === 1 ? '' : `“${words[1] === 'latfor' ? 'LATFOR' : capitalize(words[1])}” `) + capitalize(words[0]) + ' ' + district
 	);
 };
 
