@@ -1,6 +1,4 @@
 import { base } from '$app/paths';
-import { geoPath } from 'd3-geo';
-import { feature, mesh as topoMesh } from 'topojson-client';
 
 export const pct = (x, decimals = 1) =>
 	Math.round(x * Math.pow(10, decimals + 2)) / Math.pow(10, decimals) + '%';
@@ -12,8 +10,6 @@ export const money = (x) => '$' + Math.round(x / 1000) + 'k';
 export const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const isNum = (x) => !isNaN(x) && x !== null;
-
-export const id = (f) => f.properties.GEOID;
 
 export const xor = (t, u) => (t && !u) || (u && !t);
 
@@ -48,41 +44,6 @@ export function unpackAttributes(obj) {
 	}
 	return obj;
 }
-
-// Works for geometries MultiPolygons, Polygons, and MultiLineStrings and features
-// with those geometries
-export function reduceCoordinatePrecision(d) {
-	let g, f;
-	if (d.type === 'Feature') {
-		g = d.geometry;
-		f = d;
-	} else if (['MultiPolygon', 'Polygon', 'MultiLineString'].includes(d.type)) {
-		g = d;
-	}
-
-	const coords = g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
-	for (let p = 0; p < coords.length; p++) {
-		const polygon = coords[p];
-		for (let l = 0; l < polygon.length; l++) {
-			const ring = polygon[l];
-			for (let n = 0; n < ring.length; n++) {
-				const position = ring[n];
-				for (let i = 0; i < position.length; i++) {
-					const number = position[i];
-					coords[p][l][n][i] = +number.toFixed(1);
-				}
-			}
-		}
-	}
-
-	const geometry = {
-		type: g.type,
-		coordinates: g.type === 'MultiPolygon' ? coords : coords[0]
-	};
-	return f ? { ...f, geometry } : geometry;
-}
-
-export const path = geoPath();
 
 export async function getPlansMeshes() {
 	return await (await fetch(`${base}/output_assembly_senate_unity.topojson`)).json();

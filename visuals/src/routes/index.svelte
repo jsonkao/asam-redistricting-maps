@@ -1,6 +1,6 @@
 <script context="module">
-	import { feature, mesh as topoMesh } from 'topojson-client';
-	import { unpackAttributes, reduceCoordinatePrecision, readCSV } from '$lib/utils';
+	import { feature } from 'topojson-client';
+	import { unpackAttributes, readCSV } from '$lib/utils';
 	import { base } from '$app/paths';
 
 	/**
@@ -12,7 +12,7 @@
 		const topoData = await (await fetch(`${base}/output_census_wgs84.topojson`)).json();
 		const obj = unpackAttributes(topoData.objects.census);
 		const census = feature(topoData, obj);
-		const data = census.features; //.map(reduceCoordinatePrecision);
+		const data = census.features;
 
 		// Establish the static variables and the variables that change over time
 		const dynamicVars = ['pop', 'vap', 'cvap'];
@@ -29,21 +29,12 @@
 			}, [])
 		];
 
-		const idToIndex = data.reduce((acc, f, i) => {
-			acc[f.properties.GEOID] = i;
-			return acc;
-		}, {});
-
 		return {
 			props: {
 				censusData,
-				topoData,
-				obj,
 				data,
 				dynamicVars,
 				staticVars,
-				idToIndex,
-				tractVars: ['asiaentry', 'workers'],
 				pluralityVars: ['asiaentry'], // Aside from race
 				census,
 				plansTopo: await (await fetch(`${base}/plans.topojson`)).json(),
@@ -56,17 +47,7 @@
 <script>
 	import ckmeans from 'ckmeans';
 	import { slide } from 'svelte/transition';
-	import concaveman from 'concaveman';
-	import pointInPolygon from 'point-in-polygon';
-	import {
-		capitalize,
-		isNum,
-		id,
-		xor,
-		planDesc,
-		path,
-		getPlansMeshes
-	} from '$lib/utils';
+	import { capitalize, isNum, planDesc, getPlansMeshes } from '$lib/utils';
 	import {
 		colors,
 		levels,
@@ -78,7 +59,6 @@
 		views,
 		idealValues
 	} from '$lib/constants';
-	import { polygonCentroid } from 'd3-polygon';
 	import { onMount } from 'svelte';
 	import Legend from '$lib/legend.svelte';
 	import Tables from '$lib/tables.svelte';
@@ -87,31 +67,24 @@
 	import Map from '$lib/map.svelte';
 
 	export let censusData,
-		topoData,
-		obj,
 		census,
 		plansTopo,
 		data,
 		dynamicVars,
 		staticVars,
-		tractVars,
 		pluralityVars,
-		idToIndex,
 		points;
 
 	let showModal;
 	let showMoreOptions = true;
 	let showOnlyFocusDistricts = false;
-	let drawing, dragging, changingLines, pointing;
-	let draggedBgs = [];
-	let drawings = [];
+	let changingLines, pointing;
 	let aggregates = [];
 	let stats = {};
-	let presentationMode = false;
 	let isolate = false;
-	let showPluralities = true;
+	let showPluralities;
 
-	let panels = [];
+	let panels = ['plan'];
 
 	let plan = 'senate_letters';
 	let plan2 = 'senate_unity';
@@ -119,22 +92,13 @@
 
 	let opacity = 0.75;
 
-	let containerFont = presentationMode ? 24 : 18;
-	let clientWidth;
-	let viewCutoff = 870; // manually copied from make/mapshaper output
+	let containerFont = 18;
 	let view = Object.keys(views)[0];
 	$: viewBox = views[view];
 
-	const mesh = (filterFn) => topoMesh(topoData, obj, filterFn);
-
 	const closeModal = () => (showModal = false);
 	onMount(async () => {
-		const promises = await Promise.all([getPlansMeshes()]);
-		plans = promises[0];
-		// points = promises[1];
-		viewCutoff = data.length;
-
-		// showModal = !presentationMode;
+		plans = await getPlansMeshes();
 	});
 
 	let period = 'present';
@@ -206,29 +170,6 @@
 		}
 	}
 
-	$: {
-		if (!dragging && draggedBgs.length > 0) {
-			if (draggedBgs[0] === draggedBgs[draggedBgs.length - 1]) {
-				const bgs = new Set(draggedBgs);
-				const hull = concaveman(
-					mesh((a, b) => xor(bgs.has(id(a)), bgs.has(id(b)))).coordinates.flat()
-				);
-				const ids = data
-					.filter((f) => pointInPolygon(polygonCentroid(f.geometry.coordinates[0]), hull))
-					.map(id);
-				drawings = [
-					...drawings,
-					{
-						outline: path({ type: 'LineString', coordinates: hull }),
-						ids,
-						stats: getStats(ids)
-					}
-				];
-			}
-			draggedBgs = [];
-		}
-	}
-
 	function getStats(input) {
 		const data1 = input;
 		const sum = (m, w) => data1.reduce((a, d) => a + (d[m] || 0) * (w ? d[w] || 1 : 1), 0);
@@ -277,22 +218,13 @@
 		}
 	}
 
-	const startDrag = () => (dragging = true);
-	const endDrag = () => (dragging = drawing = false);
-	const handleMouseMove = (f) =>
-		drawing &&
-		dragging &&
-		(draggedBgs.length === 0 ? (draggedBgs = [id(f)]) : draggedBgs.push(id(f)));
-
 	const togglePointing = () => (pointing = !pointing);
 	function handleKeydown({ key }) {
 		if (key === ' ') togglePointing();
 		if (key === 'i') isolate = !isolate;
-		if (!presentationMode) return;
 		if (key === '=') containerFont += 2;
 		if (key === '-') containerFont -= 2;
 		if (key === 'v') showMoreOptions = !showMoreOptions;
-		if (key === 'f') showOnlyFocusDistricts = !showOnlyFocusDistricts;
 		if (key === 's') showOnlyFocusDistricts = !showOnlyFocusDistricts;
 	}
 </script>
@@ -303,11 +235,7 @@
 
 <div
 	class="container"
-	style="cursor: {drawing
-		? 'crosshair'
-		: 'auto'}; --container-font: {containerFont}px; --control-width: {270 +
-		(containerFont - 16) * 10}px;"
-	bind:clientWidth
+	style="--container-font: {containerFont}px; --control-width: {270 + (containerFont - 16) * 10}px;"
 >
 	<div class="controls">
 		<select
@@ -400,7 +328,7 @@
 					<select bind:value={plan2}>
 						{#each ['assembly', 'senate'] as scope}
 							<optgroup label={capitalize(scope)}>
-								{#each ['', '_letters', '_names', '_unity'] as proposal}
+								{#each ['', '_letters', '_names', '_unity', '_latfor'] as proposal}
 									<option value={scope + proposal}>
 										{planDesc(scope + proposal)}
 									</option>
@@ -421,79 +349,25 @@
 				/>
 			</div>
 		</Panel>
-
-		<!-- <Panel panelName="views" {panels} {togglePanel}>
-			<div slot="body" class="views">
-				<select bind:value={view}>
-					{#each Object.keys(views) as v}
-						<option value={v}>{v}</option>
-					{/each}
-				</select>
-				{#if showStreetsCheckbox}
-					<label>
-						<input type="checkbox" bind:checked={showStreets} />
-						Inspect streets
-					</label>
-				{/if}
-			</div>
-		</Panel>
-
-		{#if !presentationMode}
-			<Panel panelName="communities" {panels} {togglePanel}>
-				<button slot="title" on:click={() => (drawing = true)}>+</button>
-				<div slot="body" class="community">
-					<Tables type="community" {drawings} {delDrawing} {groups} {stats} />
-					<button on:click={save} style="font-size: 13px;">
-						<b>[SAVE]</b>
-					</button>
-				</div>
-			</Panel>
-		{/if} -->
 	</div>
 
 	<Map
-		{viewBox}
-		{plansTopo}
 		{census}
+		{plansTopo}
 		{pointing}
-		{draggedBgs}
-		{data}
-		{path}
 		{color}
-		{changingLines}
 		{showPluralities}
 		{metric}
 		{opacity}
 		{period}
-		{tractVars}
 		{panels}
-		{drawings}
 		{plan}
 		{plan2}
 		{points}
-		{aggregates}
-		{obj}
 		{togglePointing}
 		{handleLabelClick}
 		{isolate}
-		{plans}
-		{startDrag}
-		{endDrag}
-		{handleMouseMove}
-		{viewCutoff}
-		{showOnlyFocusDistricts}
-		{presentationMode}
 	/>
-
-	{#if !presentationMode}
-		<div class="footer">
-			<p>
-				Questions, suggestions, concerns --> <a href="mailto:jason.kao@console.edu"
-					>jason.kao@columbia.edu</a
-				>.
-			</p>
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -520,10 +394,6 @@
 		box-shadow: 0px 2px 5px #0006;
 	}
 
-	.community {
-		margin-bottom: 10px;
-	}
-
 	.plurality-toggle {
 		text-decoration: underline;
 		margin-left: 7px;
@@ -538,12 +408,11 @@
 		text-align: right;
 	}
 
-	.views label {
-		display: block;
-		cursor: pointer;
-	}
-
 	.plan-selector {
 		margin-bottom: 10px;
+	}
+
+	.slider input {
+		width: 20px;
 	}
 </style>
