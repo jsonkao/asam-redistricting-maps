@@ -3,19 +3,12 @@
 	import { onMount } from 'svelte';
 	import { hexToRGB } from '$lib/utils';
 
-	export let viewBox,
-		census,
+	export let census,
 		plansTopo,
-		draggedBgs,
-		data,
-		path,
 		color,
-		changingLines,
-		neighbor,
 		showPluralities,
 		metric,
 		period,
-		tractVars,
 		panels,
 		plan,
 		plan2,
@@ -23,18 +16,8 @@
 		isolate,
 		pointing,
 		opacity,
-		obj,
 		handleLabelClick,
-		togglePointing,
-		// plans,
-		startDrag,
-		endDrag,
-		handleMouseMove,
-		viewCutoff,
-		showOnlyFocusDistricts,
-		showStreets,
-		presentationMode,
-		streets;
+		togglePointing;
 
 	let map, loaded;
 
@@ -61,12 +44,7 @@
 		return matchExp;
 	}
 
-	const defaultLineWidth = ['case', ['boolean', ['feature-state', 'pointing'], false], 3.5, 1.8]
-
-	const corrections = {
-		/* Q: "14",
-		G: "16" */
-	}
+	const defaultLineWidth = ['case', ['boolean', ['feature-state', 'pointing'], false], 2.5, 1.2];
 
 	onMount(() => {
 		mapboxgl.accessToken =
@@ -86,25 +64,11 @@
 					type: 'fill',
 					source: 'census',
 					paint: {
-						'fill-color': getCensusFills(),
+						'fill-color': getCensusFills()
 					}
 				},
 				'parks'
 			);
-			/*
-			map.addLayer(
-				{
-					id: 'census_lines',
-					type: 'line',
-					source: 'census',
-					paint: {
-						'line-color': 'purple',
-						'line-width': 1,
-					}
-				},
-				'parks'
-			);
-			*/
 
 			const plansGeojsons = {};
 			allPlans.forEach((k) => {
@@ -112,7 +76,7 @@
 				plansGeojsons[k] = {
 					type: 'FeatureCollection',
 					features: data.features.map((f) => {
-						return { ...f, id: f.properties[k] }
+						return { ...f, id: f.properties[k] };
 					})
 				};
 			});
@@ -179,7 +143,7 @@
 							'bottom-right'
 						],
 						'text-radial-offset': 1,
-						'text-field': ['format', ['get', k], { 'font-scale': 1.35 }] /*
+						'text-field': ['format', ['get', k], { 'font-scale': 1.2 }] /*
 						'text-font': [
 							'case',
 							['boolean', ['feature-state', 'pointing'], false],
@@ -230,14 +194,6 @@
 					});
 				}
 			});
-			let total_total = 0;
-			let total_asian = 0;
-			map.on('contextmenu', e => {
-				const { pop20_total, pop20_asian } = map.queryRenderedFeatures(e.point).filter(f => f.layer.id === "census")[0].properties;
-				total_total += pop20_total;
-				total_asian += pop20_asian;
-				console.log(total_total, total_asian)
-			})
 		});
 	});
 
@@ -247,7 +203,7 @@
 		if (loaded) {
 			allPlans.forEach((p) => {
 				const isPlan2 = panels.includes('plan2') && p === plan2;
-				const visibility = panels.includes('plan') && p === plan || isPlan2 ? 'visible' : 'none';
+				const visibility = (panels.includes('plan') && p === plan) || isPlan2 ? 'visible' : 'none';
 				map.setLayoutProperty(`${p}_outline`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);
@@ -276,15 +232,17 @@
 	$: {
 		if (loaded) {
 			if (panels.includes('plan2')) {
-				let cap = (x) => Math.max(0.1, Math.min(x, 1));
-				map.setPaintProperty(`${plan}_outline`, 'line-opacity', cap(1.5 - opacity));
+				let cap = (x) => Math.max(0, Math.min(x, 1));
+				const maxSum = 1; // 1.5;
+				map.setPaintProperty(`${plan}_outline`, 'line-opacity', cap(maxSum - opacity));
 				map.setPaintProperty(`${plan2}_outline`, 'line-opacity', cap(opacity));
 
 				cap = (x) => {
+					return Math.max(0, Math.min(x, 1));
 					if (x > 0.6 && x < 0.8) return 1;
 					return x < 0.35 ? 0.35 : x > 0.75 ? 1 : x;
 				};
-				map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(1.5 - opacity));
+				map.setPaintProperty(`${plan}_labels`, 'text-opacity', cap(maxSum - opacity));
 				map.setPaintProperty(`${plan2}_labels`, 'text-opacity', cap(opacity));
 			} else {
 				map.setPaintProperty(`${plan}_outline`, 'line-opacity', 1);
@@ -304,7 +262,7 @@
 					`${p}_outline`,
 					'line-width',
 					isolate
-						? ['case', ['boolean', ['feature-state', 'pointing'], false], 3, 0]
+						? ['case', ['boolean', ['feature-state', 'pointing'], false], 2, 0]
 						: defaultLineWidth
 				);
 			});
