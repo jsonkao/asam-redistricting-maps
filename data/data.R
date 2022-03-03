@@ -58,7 +58,7 @@ vap10_blk20 <- get_decennial(
   geography = "block",
   state = "New York",
   county = county,
-  variables = c(asian = "P010006", total = "P001001", white = "P010003", black = "P010004", hispanic = "P011002"),
+  variables = c(asian = "P010006", total = "P010001", white = "P010003", black = "P010004", hispanic = "P011002"),
   year = 2010
 ) %>%
   select(GEOID, group = variable, value) %>%

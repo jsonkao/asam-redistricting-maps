@@ -20,7 +20,7 @@ main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans
 # For Mapbox
 
 # Non-geographic data source
-visuals/static/data.csv: mapping/census.geojson Makefile
+visuals/static/data.csv: mapping/census.geojson
 	mapshaper $< \
 	-filter "pop20_total > 0" \
 	-drop fields=GEOID,ALAND,IDEAL_VALU \
