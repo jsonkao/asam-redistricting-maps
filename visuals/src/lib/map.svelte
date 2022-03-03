@@ -208,7 +208,7 @@
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);
 
-				const color = isPlan2 ? '#8856a7' : '#121212';
+				const color = isPlan2 ? /* '#8856a7' */ '#121212' : '#121212';
 				map.setPaintProperty(`${p}_outline`, 'line-color', color);
 				map.setPaintProperty(`${p}_labels`, 'text-color', color);
 			});

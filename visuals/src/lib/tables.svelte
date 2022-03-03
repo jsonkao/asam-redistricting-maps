@@ -13,7 +13,7 @@
 
 	export let type = 'districts';
 
-	$: varLabel = variable === 'pop' ? 'Pop.' : (variable || '').toUpperCase();
+	$: varLabel = {'vap': 'Voting-age population', 'pop': 'Population'}[variable];
 </script>
 
 {#if variable !== null}
@@ -22,20 +22,19 @@
 			{#if a.split(',')[0] === plan}
 				<div class="district-aggregate">
 					<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
-					<table>
-						<tr>
-							<th />
-							<th>2010 {varLabel}</th>
-							<th>2020 {varLabel}</th>
-						</tr>
+					<p />
+					<p class="chart-title">{varLabel}</p>
+					<div class="chart">
 						{#each groups as grp}
-							<tr>
-								<td>{capitalize(grp)}</td>
-								<td>{pct(stats[a][variable + '10' + grp])}</td>
-								<td>{pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp])}</td>
-							</tr>
+							<p class="bar-label">{capitalize(grp)}</p>
+							<div
+								class="bar bar-{grp}"
+								style="width: {pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp])}"
+							>
+								<p>{pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp], !!(grp === 'asian'))}</p>
+							</div>
 						{/each}
-					</table>
+					</div>
 					{#if changingLines && plan in idealValues}
 						<p class="table-footer">
 							Income: {money(stats[a].income) +
@@ -122,5 +121,36 @@
 
 	.district-aggregate p:first-child {
 		cursor: pointer;
+	}
+
+	.chart {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		column-gap: 8px;
+		row-gap: 4px;
+	}
+
+	.chart-title {
+		font-weight: bold;
+		margin-bottom: 5px;
+	}
+
+	.bar {
+		height: 100%;
+		background-color: #ccc;
+	}
+
+	.bar p {
+		position: relative;
+		left: calc(100% + 4px);
+		top: 4px;
+	}
+
+	.bar-asian {
+		background-color: rgb(222, 45, 38);
+	}
+
+	.bar-label {
+		text-align: right;
 	}
 </style>

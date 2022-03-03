@@ -47,7 +47,7 @@
 <script>
 	import ckmeans from 'ckmeans';
 	import { slide } from 'svelte/transition';
-	import { capitalize, isNum, planDesc, getPlansMeshes } from '$lib/utils';
+	import { capitalize, isNum, planDesc } from '$lib/utils';
 	import {
 		colors,
 		levels,
@@ -59,7 +59,6 @@
 		views,
 		idealValues
 	} from '$lib/constants';
-	import { onMount } from 'svelte';
 	import Legend from '$lib/legend.svelte';
 	import Tables from '$lib/tables.svelte';
 	import Panel from '$lib/panel.svelte';
@@ -88,18 +87,12 @@
 
 	let plan = 'senate_letters';
 	let plan2 = 'senate_unity';
-	let plans;
 
 	let opacity = 0.75;
 
 	let containerFont = 18;
-	let view = Object.keys(views)[0];
-	$: viewBox = views[view];
 
 	const closeModal = () => (showModal = false);
-	onMount(async () => {
-		plans = await getPlansMeshes();
-	});
 
 	let period = 'present';
 	let variable = 'vap';
