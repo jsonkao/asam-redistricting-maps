@@ -14,6 +14,8 @@
 	export let type = 'districts';
 
 	$: varLabel = {'vap': 'Voting-age population', 'pop': 'Population'}[variable];
+
+	$: console.log(stats);
 </script>
 
 {#if variable !== null}
@@ -23,15 +25,15 @@
 				<div class="district-aggregate">
 					<p on:click={() => handleLabelClick(a)}><i>{planTitle(a)}</i></p>
 					<p />
-					<p class="chart-title">{varLabel}</p>
+					<p class="chart-title">{varLabel} (20{(a.includes('_') ? (variable === 'cvap' ? '19' : '20') : '10')})</p>
 					<div class="chart">
 						{#each groups as grp}
 							<p class="bar-label">{capitalize(grp)}</p>
 							<div
 								class="bar bar-{grp}"
-								style="width: {pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp])}"
+								style="width: {pct(stats[a][variable + (a.includes('_') ? (variable === 'cvap' ? '19' : '20') : '10') + grp])}"
 							>
-								<p>{pct(stats[a][variable + (variable === 'cvap' ? '19' : '20') + grp], !!(grp === 'asian'))}</p>
+								<p>{pct(stats[a][variable + (a.includes('_') ? (variable === 'cvap' ? '19' : '20') : '10') + grp], !!(grp === 'asian'))}</p>
 							</div>
 						{/each}
 					</div>

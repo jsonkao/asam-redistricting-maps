@@ -56,7 +56,6 @@
 		variablesLong,
 		seqColors,
 		schemeBlues,
-		views,
 		idealValues
 	} from '$lib/constants';
 	import Legend from '$lib/legend.svelte';
@@ -174,9 +173,9 @@
 		let new_asiancvap = sum('cvap19_asian');
 
 		const output = {
-			income: wMean('income'),
+			/* income: wMean('income'),
 			hhlang: prop('hhlang', 'asian'),
-			benefits: prop('families', 'benefits'),
+			benefits: prop('families', 'benefits'), */
 			pop20_total: sum('pop20_total'),
 			pct_increase: (new_asian - old_asian) / old_asian,
 			pct_increase_cvap: (new_asiancvap - old_asiancvap) / old_asiancvap
