@@ -84,7 +84,6 @@
 				},
 				'parks'
 			);
-			console.log(layers);
 
 			plans.forEach((k) => {
 				const data = feature(topoData, topoData.objects[k]);
