@@ -14,8 +14,6 @@
 	export let type = 'districts';
 
 	$: varLabel = {'vap': 'Voting-age population', 'pop': 'Population'}[variable];
-
-	$: console.log(stats);
 </script>
 
 {#if variable !== null}

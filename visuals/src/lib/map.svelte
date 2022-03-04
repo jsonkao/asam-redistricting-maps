@@ -166,9 +166,7 @@
 					const features = map
 						.queryRenderedFeatures(e.point)
 						.filter((f) => allPlans.some((p) => p === f.source));
-					console.log(features);
 					pointingOn = features.map((f) => {
-						console.log(plansGeojsons[f.source]);
 						map.setFeatureState(
 							{ source: f.source, id: f.properties[f.source] },
 							{ pointing: true }
