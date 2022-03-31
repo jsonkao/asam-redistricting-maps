@@ -11,7 +11,7 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 #
 # PLANS for web
-#
+# 
 
 
 main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
@@ -26,6 +26,11 @@ visuals/static/data.csv: mapping/census.geojson
 	-drop fields=GEOID,ALAND,IDEAL_VALU \
 	-o $@
 
+visuals/static/census.topojson: mapping/census.geojson
+	mapshaper $< \
+	-simplify 22% \
+	-clean \
+	-o $@ format=topojson
 
 visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	mapshaper $< \
@@ -95,22 +100,13 @@ plans/current.zip:
 #
 
 # Filter geography down; join it with census data
-mapping/census.geojson: mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp data/data.csv
+mapping/census.geojson: mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp visuals/static/temp_dev.csv
 	mapshaper $< \
 	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP20)" \
 	-rename-fields GEOID=GEOID20,ALAND=ALAND20 \
-	-filter-fields GEOID,ALAND \
+	-filter "ALAND > 0" \
+	-filter-fields GEOID \
 	-join $(word 2,$^) keys=GEOID,GEOID string-fields=GEOID \
-	-join plans/senate.geojson largest-overlap \
-	-join plans/senate_letters.geojson largest-overlap \
-	-join plans/senate_names.geojson largest-overlap \
-	-join plans/assembly.geojson largest-overlap \
-	-join plans/assembly_letters.geojson largest-overlap \
-	-join plans/assembly_names.geojson largest-overlap \
-	-join unity/assembly_unity.geojson largest-overlap \
-	-join unity/senate_unity.geojson largest-overlap \
-	-join latfor/assembly_latfor.geojson largest-overlap \
-	-join latfor/senate_latfor.geojson largest-overlap \
 	-o bbox $@
 
 mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp: mapping/tl_2021_36_tabblock20.zip
