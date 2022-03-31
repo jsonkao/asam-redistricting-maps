@@ -80,12 +80,12 @@
 	let aggregates = [];
 	let stats = {};
 	let isolate = false;
-	let showPluralities;
+	let showPluralities = true;
 
 	let panels = ['plan'];
 
-	let plan = 'senate_letters';
-	let plan2 = 'senate_unity';
+	let plan = 'assembly_latfor';
+	let plan2 = 'assembly';
 
 	let opacity = 0.75;
 

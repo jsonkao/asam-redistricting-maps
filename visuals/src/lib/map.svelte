@@ -51,7 +51,7 @@
 			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
 		map = new mapboxgl.Map({
 			container: 'map',
-			style: 'mapbox://styles/jsonkao/ckvnu5tpy6coj14uizvyf1wuf/draft',
+			style: 'mapbox://styles/jsonkao/cl1f4e52k000t15p9pvoqwiwl/draft',
 			center: [-73.967, 40.72],
 			zoom: 11
 		});
