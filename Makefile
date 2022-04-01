@@ -102,7 +102,7 @@ plans/current.zip:
 # Filter geography down; join it with census data
 mapping/census.geojson: mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp visuals/static/temp_dev.csv
 	mapshaper $< \
-	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP20)" \
+	-filter "['047', '081', '061', '005', '/* 085 */'].includes(COUNTYFP20)" \
 	-rename-fields GEOID=GEOID20,ALAND=ALAND20 \
 	-filter "ALAND > 0" \
 	-filter-fields GEOID \
