@@ -80,7 +80,7 @@
 	let aggregates = [];
 	let stats = {};
 	let isolate = false;
-	let showPluralities = true;
+	let showPluralities = false;
 
 	let panels = ['plan'];
 
@@ -148,10 +148,10 @@
 			if (showPluralities) {
 				const majority = groups.filter((g) => p(g) > 0.5)[0];
 				if (majority !== undefined)
-					return colors[majority] + levels[total < 130 ? 0 : total < 200 ? 1 : 2];
+					return colors[majority][total < 130 ? 0 : total < 200 ? 1 : 2];
 				const pluralities = [...groups].sort((a, b) => p(b) - p(a));
 				const distance = p(pluralities[0]) - p(pluralities[1]);
-				return colors[pluralities[0]] + levels[distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
+				return colors[pluralities[0]][distance < 0.093 ? 0 : 1]; // from R, see data/explore.R
 			} else {
 				const breaks = breaksCache[variable];
 				for (let i = 1; i < breaks.length; i++) {
@@ -405,6 +405,6 @@
 	}
 
 	.slider input {
-		width: 20px;
+		width: 160px;
 	}
 </style>

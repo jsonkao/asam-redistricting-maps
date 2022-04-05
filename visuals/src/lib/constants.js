@@ -1,4 +1,11 @@
 export const colors = {
+	black: ['rgb(165, 213, 15)', 'rgb(191, 225, 91)', 'rgb(219, 236, 170)'].reverse(),
+	hispanic: ['rgb(254, 175, 16)', 'rgb(252, 197, 91)', 'rgb(249, 223, 170)'].reverse(),
+	asian: ['rgb(254, 15, 16)', 'rgb(252, 91, 91)', 'rgb(249, 170, 170)'].reverse(),
+	white: ['rgb(125, 193, 254)', 'rgb(163, 203, 252)', 'rgb(206, 225, 249)'].reverse(),
+};
+
+const oldColors = {
 	black: '#9fd400',
 	hispanic: '#ffaa00',
 	asian: '#ff0000',

@@ -17,8 +17,8 @@
 {#if dynamicVars.includes(variable) && showPluralities}
 	<div class="legend">
 		{#each groups as grp}
-			{#each levels as lvl}
-				<div style="background-color: {colors[grp] + lvl}" />
+			{#each levels as lvl, i}
+				<div style="background-color: {colors[grp][i]}" />
 			{/each}
 			<p class="row-label">{capitalize(grp)}</p>
 		{/each}

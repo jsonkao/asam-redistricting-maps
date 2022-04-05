@@ -38,7 +38,7 @@
 		if (metric === null) return 'rgba(0, 0, 0, 0)';
 		const matchExp = ['match', ['get', 'GEOID']];
 		census.features.forEach((f) => {
-			matchExp.push(f.properties.GEOID, hexToRGB(color(f)));
+			matchExp.push(f.properties.GEOID, color(f));
 		});
 		matchExp.push('rgba(0, 0, 0, 0)');
 		return matchExp;
@@ -94,7 +94,7 @@
 						source: k,
 						layout: {},
 						paint: {
-							'line-color': '#121212',
+							'line-color': '#e2c169',
 							'line-width': defaultLineWidth
 						}
 					},
@@ -184,9 +184,10 @@
 						.filter((f) => f.source.endsWith('_labels'));
 					features.forEach((f) => {
 						const scope_proposal = f.source.replace('_labels', '');
+						const feature = { source: scope_proposal, id: f.properties[scope_proposal] };
 						map.setFeatureState(
-							{ source: scope_proposal, id: f.properties[scope_proposal] },
-							{ pointing: true }
+							feature,
+							{ pointing: !map.getFeatureState(feature).pointing }
 						);
 						handleLabelClick(`${scope_proposal},${f.properties[scope_proposal]}`);
 					});
@@ -206,9 +207,9 @@
 				map.setLayoutProperty(`${p}_fill`, 'visibility', visibility);
 				map.setLayoutProperty(`${p}_labels`, 'visibility', visibility);
 
-				const color = isPlan2 ? /* '#8856a7' */ '#121212' : '#121212';
+				const color = '#e2c169' // isPlan2 ? /* '#8856a7' */ '#121212' : '#121212';
 				map.setPaintProperty(`${p}_outline`, 'line-color', color);
-				map.setPaintProperty(`${p}_labels`, 'text-color', color);
+				map.setPaintProperty(`${p}_labels`, 'text-color', '#121212');
 			});
 		}
 	}
