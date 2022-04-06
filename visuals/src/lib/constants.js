@@ -30,7 +30,8 @@ export const variablesLong = {
 	pop: 'Population by race' + (translate ? ' / 人口划分: 各种族群' : ''),
 };
 
-export const seqColors = ['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26'] || [
+export const seqColors = ['#d2a4a3', '#cd716a', '#ad4a44', '#822b28', '#5a0909'] ||
+	['#fee5d9', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26'] || [
 	'#ecf2f7',
 	'#cabed8',
 	'#aa8ab6',

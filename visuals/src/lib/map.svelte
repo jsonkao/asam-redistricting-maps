@@ -154,7 +154,7 @@
 					paint: {
 						'text-color': '#121212',
 						'text-halo-color': '#fff',
-						'text-halo-width': 1.2
+						'text-halo-width': 0.8
 					}
 				});
 			});
