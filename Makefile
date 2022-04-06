@@ -10,17 +10,10 @@ PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 #
-# PLANS for web
-#
-
-
-main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
-
-#
 # SVGs for documentary
 #
 
-svg/asians.geojson: mapping/census.geojson mapping/counties.geojson
+svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson 
 	mapshaper -i $^ combine-files \
 	-target census \
 	-each "prop_asian = pop20_asian / pop20_total" \
@@ -28,16 +21,26 @@ svg/asians.geojson: mapping/census.geojson mapping/counties.geojson
 	-filter "pop20_total > 0" \
 	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.2,0.4,0.6 \
 	-style fill='getColor(prop_asian)' \
-	-target counties \
-	-style fill='#686969' \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
 	-target "*" \
+	-proj EPSG:3857 \
 	-simplify 22% \
 	-clean \
-	-proj EPSG:3857 \
 	-o $@
 
-mapping/counties.geojson:
-	curl -L "https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/NYC_Borough_Boundary/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=pgeojson" -o $@
+mapping/nybb_22a/nybb_wgs84.shp:
+	curl -L https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_22a.zip -o mapping/nybb_22a.zip
+	unzip -d mapping/ mapping/nybb_22a.zip
+	rm mapping/nybb_22a.zip
+	mapshaper mapping/nybb_22a/nybb.shp -proj wgs84 -o mapping/nybb_22a/nybb_wgs84.shp
+
+#
+# PLANS for web
+#
+
+
+main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
 
 # For Mapbox
 
