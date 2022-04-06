@@ -16,6 +16,28 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
 
+#
+# SVGs for documentary
+#
+
+svg/asians.geojson: mapping/census.geojson mapping/counties.geojson
+	mapshaper -i $^ combine-files \
+	-target census \
+	-each "prop_asian = pop20_asian / pop20_total" \
+	-filter "prop_asian >= 0.1" \
+	-filter "pop20_total > 0" \
+	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.2,0.4,0.6 \
+	-style fill='getColor(prop_asian)' \
+	-target counties \
+	-style fill='#686969' \
+	-target "*" \
+	-simplify 22% \
+	-clean \
+	-proj EPSG:3857 \
+	-o $@
+
+mapping/counties.geojson:
+	curl -L "https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/NYC_Borough_Boundary/FeatureServer/0/query?where=1=1&outFields=*&outSR=4326&f=pgeojson" -o $@
 
 # For Mapbox
 
