@@ -13,6 +13,46 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 # SVGs for documentary
 #
 
+svg/sunsetpark_bensonhurst.svg: plans/senate.geojson Makefile
+	mapshaper $< \
+	-filter "[20, 17, 23, 21, 22].includes(senate)" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/chinatown.svg: plans/senate.geojson Makefile
+	mapshaper $< \
+	-filter "[26].includes(senate)" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/chinatown_congress.svg: plans/congress.geojson Makefile
+	mapshaper $< \
+	-filter "[10].includes(congress)" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/richmond_hill.svg: plans/assembly.geojson Makefile
+	mapshaper $< \
+	-filter "[24, 27, 28, 38, 23, 31, 32].includes(assembly)" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/elmhurst.svg: plans/assembly.geojson Makefile
+	mapshaper $< \
+	-filter "[35, 34, 39, 30, 28].includes(assembly)" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
 svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson 
 	mapshaper -i $^ combine-files \
 	-target census \
