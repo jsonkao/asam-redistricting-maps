@@ -69,6 +69,33 @@ svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson
 	-clean \
 	-o $@
 
+svg/assembly.svg: plans/assembly.geojson Makefile
+	mapshaper $< \
+	-join mapping/nyc_counties.geojson \
+	-filter "!!GEOID" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/senate.svg: plans/senate.geojson Makefile
+	mapshaper $< \
+	-join mapping/nyc_counties.geojson \
+	-filter "!!GEOID" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
+svg/congress.svg: plans/congress.geojson Makefile
+	mapshaper $< \
+	-join mapping/nyc_counties.geojson \
+	-filter "!!GEOID" \
+	-lines \
+	-style stroke=black \
+	-proj EPSG:3857 \
+	-o $@
+
 mapping/nybb_22a/nybb_wgs84.shp:
 	curl -L https://www1.nyc.gov/assets/planning/download/zip/data-maps/open-data/nybb_22a.zip -o mapping/nybb_22a.zip
 	unzip -d mapping/ mapping/nybb_22a.zip
@@ -186,6 +213,14 @@ mapping/tl_2021_36_tabblock20/tl_2021_36_tabblock20.shp: mapping/tl_2021_36_tabb
 mapping/tl_2021_36_tabblock20.zip:
 	mkdir -p mapping
 	curl -L https://www2.census.gov/geo/tiger/TIGER2021/TABBLOCK20/tl_2021_36_tabblock20.zip -o $@
+
+# Zipfile downloaded from Census TIGER/Line FTP server
+mapping/nyc_counties.geojson:
+	mapshaper mapping/tl_2021_us_county/tl_2021_us_county.shp \
+	-filter "STATEFP === '36'" \
+	-filter "['047', '081', '061', '005', '085'].includes(COUNTYFP)" \
+	-o $@
+
 
 #
 # UNITY MAPS
