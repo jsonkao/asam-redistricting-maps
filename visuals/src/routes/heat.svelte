@@ -137,6 +137,7 @@
 	// saturation --> temperature
 	// connecting it to areas we are able to investigate next
 	// writeup with images: what u did, why, the workflow, how it could be useful to journalists, and next steps. doesn't have to be long — get to the damn point. bullet points and images.  at least a draft of that stuff
+	// lydia suggestion about switching colors: increase saturation for temperature
 </script>
 
 <svelte:head>
