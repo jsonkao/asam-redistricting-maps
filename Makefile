@@ -6,31 +6,29 @@
 PLANS = senate_letters senate_names congress_letters congress_names assembly_letters assembly_names
 PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
-# xmin, ymin, xmax, ymax
-FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
-
 #
 # PLANS for web
 # 
 
 
-main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
+# main: visuals/static/data.csv visuals/static/points.geojson visuals/static/plans.topojson
 
 
 # For Mapbox
 
-# Non-geographic data source
-visuals/static/data.csv: mapping/census.geojson
+visuals/static/census.topojson: mapping/census.geojson Makefile
 	mapshaper $< \
-	-filter "pop20_total > 0" \
-	-drop fields=GEOID,ALAND,IDEAL_VALU \
-	-o $@
-
-visuals/static/census.topojson: mapping/census.geojson
-	mapshaper $< \
+	-filter-fields GEOID,temp,temp_past,tree,income,builtfar,residfar \
 	-simplify 22% \
 	-clean \
 	-o $@ format=topojson
+
+# Non-geographic data source
+visuals/static/data.csv: mapping/census.geojson
+	mapshaper $< \
+	-filter "total > 0" \
+	-filter-fields temp,temp_past,tree,income,builtfar \
+	-o $@
 
 visuals/static/output_census_wgs84.topojson: mapping/census.geojson
 	mapshaper $< \

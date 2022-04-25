@@ -14,4 +14,4 @@ plans/*
 streets/*
 !streets/*.geojson
 
-mapping/tl_2021_36_tabblock20*
+mapping/tl_*

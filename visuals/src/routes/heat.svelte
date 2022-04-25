@@ -22,8 +22,8 @@
 	export let census;
 
 	let map, loaded;
-	let year = '2000';
-	let metric = 'tree';
+	let year = 'temp';
+	let metric = 'residfar';
 
 	function color({ properties: d }) {
 		/* const colors = [
@@ -64,17 +64,19 @@
 			'#e72934'
 		].map(hexToRGB);
 		const cutoffs = {
-			'1990': [-0.88, -0.54, -0.26, 0.03, 0.84, 1.97, 2.68, 3.86],
-			'2000': [-2.69, -1.62, -0.85, -0.27, 0.24, 0.76, 1.4, 5.23],
-			'2010': [-2.37, -1.43, -0.77, -0.22, 0.28, 0.78, 1.36, 4.9],
-			'1990': [56.59, 58.93, 60.82, 62.82, 68.38, 76.16, 81.03, 89.09],
-			'2000': [71.37, 75.14, 77.88, 79.95, 81.76, 83.59, 85.89, 99.54],
-			'2010': [78.96, 82.16, 84.39, 86.24, 87.96, 89.67, 91.64, 103.63],
-			'1990': [58.29, 60.6, 62.77, 71.22, 80.85, 89.09],
-			'2000': [75.14, 78.58, 80.94, 83.03, 85.42, 99.54],
-			'2010': [82.87, 85.3, 87.27, 89.13, 91.09, 103.63],
+			temp_past: [
+				75.51255834164694, 78.14788023885677, 79.9428946835466, 81.62303270656426,
+				83.41042267761047, 93.93799025498207
+			],
+			temp: [
+				79.2023181629553, 81.75172738815884, 83.55452214893113, 85.18752825955092,
+				86.95933244727853, 96.51681672713941
+			],
 			tree: [0.04278385197645081, 0.14645235069885643, 0.35050369685767097, 0.8286626506024096],
-			income: [49896.0, 78194.0, 120580.0, 250001.0]
+			income: [49896.0, 78194.0, 120580.0, 250001.0],
+			// builtfar: [2.385, 8.4, 30.71, 71.67],
+			builtfar: [0.49, 0.7, 1.7, 71.67],
+			residfar: [.5, 1, 2.5, 10],
 		};
 		let y, m;
 		for (y = 0; y < cutoffs[year].length; y++) {
@@ -131,6 +133,10 @@
 			map.setPaintProperty('census', 'fill-color', getCensusFills(year, metric));
 		}
 	}
+
+	// saturation --> temperature
+	// connecting it to areas we are able to investigate next
+	// writeup with images: what u did, why, the workflow, how it could be useful to journalists, and next steps. doesn't have to be long — get to the damn point. bullet points and images.  at least a draft of that stuff
 </script>
 
 <svelte:head>
@@ -142,108 +148,110 @@
 <div class="container">
 	<div class="controls">
 		<select bind:value={year}>
-			{#each ['1990', '2000', '2010'] as y}
-				<option value={y}>{y}</option>
+			{#each ['temp', 'temp_past'] as y}
+				<option value={y}>{{'temp': '2018 Temp', 'temp_past': '2000 Temp'}[y]}</option>
 			{/each}
 		</select>
 		<select bind:value={metric}>
-			{#each ['None', 'tree', 'income'] as m}
-				<option value={m}>{m}</option>
+			{#each ['None', 'tree', 'income', 'builtfar', 'residfar'] as m}
+				<option value={m}>{{'builtfar': 'Building FAR', 'residfar': 'Residential FAR'}[m] || m}</option>
 			{/each}
 		</select>
 
-		<div id="legend-container">
-			<div id="x-axis-labels" style="height: 210px">
-				<p class="halo">Hotter</p>
-				<p class="halo">Colder</p>
-			</div>
-			<div id="x-axis" style="height: 240px; width: 16px;">
-				<svg viewBox="-8 0 16 240">
-					<defs>
-						<marker
-							id="arrowhead"
-							markerWidth="10"
-							markerHeight="6"
-							refX="0"
-							refY="3"
-							orient="auto"
-						>
-							<polygon points="0 0, 6 3, 0 6" />
-						</marker>
-					</defs>
-					<line x1="0" y1="120" x2="0" y2="16" marker-end="url(#arrowhead)" />
-					<line x1="0" y1="120" x2="0" y2="224" marker-end="url(#arrowhead)" />
-				</svg>
-			</div>
-			<div id="legend">
-				<div
-					id="legend-temp"
-					style="position: absolute;
+		{#if metric !== 'None'}
+			<div id="legend-container">
+				<div id="x-axis-labels" style="height: 210px">
+					<p class="halo">Hotter</p>
+					<p class="halo">Colder</p>
+				</div>
+				<div id="x-axis" style="height: 240px; width: 16px;">
+					<svg viewBox="-8 0 16 240">
+						<defs>
+							<marker
+								id="arrowhead"
+								markerWidth="10"
+								markerHeight="6"
+								refX="0"
+								refY="3"
+								orient="auto"
+							>
+								<polygon points="0 0, 6 3, 0 6" />
+							</marker>
+						</defs>
+						<line x1="0" y1="120" x2="0" y2="16" marker-end="url(#arrowhead)" />
+						<line x1="0" y1="120" x2="0" y2="224" marker-end="url(#arrowhead)" />
+					</svg>
+				</div>
+				<div id="legend">
+					<div
+						id="legend-temp"
+						style="position: absolute;
 				width: 100%;
 				height: 100%;
 				mix-blend-mode: darken;background: linear-gradient(0deg, rgb(34, 229, 229) 0%, rgb(34, 229, 229) 16.6667%, rgb(102, 236, 236) 16.6667%, rgb(102, 236, 236) 33.3333%, rgb(174, 243, 243) 33.3333%, rgb(174, 243, 243) 50%, rgb(243, 243, 174) 50%, rgb(243, 243, 174) 66.6667%, rgb(236, 236, 102) 66.6667%, rgb(236, 236, 102) 83.3333%, rgb(229, 229, 34) 83.3333%, rgb(229, 229, 34) 100%);"
-				>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
+					>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
+						<div style="height: 30px;">
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+							<div style="width: 30px; height: 30px;" class="" />
+						</div>
 					</div>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-					</div>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-					</div>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-					</div>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-					</div>
-					<div style="height: 30px;">
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-						<div style="width: 30px; height: 30px;" class="" />
-					</div>
+					<div
+						id="legend-imp"
+						style="background: linear-gradient(90deg, rgb(250, 250, 250) 0%, rgb(250, 250, 250) 25%, rgb(243, 174, 243) 25%, rgb(243, 174, 243) 50%, rgb(236, 102, 236) 50%, rgb(236, 102, 236) 75%, rgb(229, 34, 229) 75%, rgb(229, 34, 229) 100%);"
+					/>
 				</div>
-				<div
-					id="legend-imp"
-					style="background: linear-gradient(90deg, rgb(250, 250, 250) 0%, rgb(250, 250, 250) 25%, rgb(243, 174, 243) 25%, rgb(243, 174, 243) 50%, rgb(236, 102, 236) 50%, rgb(236, 102, 236) 75%, rgb(229, 34, 229) 75%, rgb(229, 34, 229) 100%);"
-				/>
+				<div id="y-axis" class="visible" style="color: #d73027;">
+					<svg viewBox="0 0 160 16">
+						<defs>
+							<marker
+								id="arrowhead"
+								markerWidth="10"
+								markerHeight="6"
+								refX="0"
+								refY="3"
+								orient="auto"
+							>
+								<polygon points="0 0, 6 3, 0 6" />
+							</marker>
+						</defs>
+						<line x1="0" y1="8" x2="151" y2="8" marker-end="url(#arrowhead)" />
+					</svg>
+				</div>
+				<div id="y-axis-label"><p class="halo">{metric}</p></div>
 			</div>
-			<div id="y-axis" class="visible" style="color: #d73027;">
-				<svg viewBox="0 0 160 16">
-					<defs>
-						<marker
-							id="arrowhead"
-							markerWidth="10"
-							markerHeight="6"
-							refX="0"
-							refY="3"
-							orient="auto"
-						>
-							<polygon points="0 0, 6 3, 0 6" />
-						</marker>
-					</defs>
-					<line x1="0" y1="8" x2="151" y2="8" marker-end="url(#arrowhead)" />
-				</svg>
-			</div>
-			<div id="y-axis-label"><p class="halo">{metric}</p></div>
-		</div>
+		{/if}
 	</div>
 	<div id="map" />
 </div>
