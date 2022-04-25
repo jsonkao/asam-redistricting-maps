@@ -13,44 +13,76 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 # SVGs for documentary
 #
 
-svg/sunsetpark_bensonhurst.svg: plans/senate.geojson Makefile
-	mapshaper $< \
-	-filter "[20, 17, 23, 21, 22].includes(senate)" \
+all: svg/sunsetpark_bensonhurst.svg svg/chinatown.svg svg/chinatown_congress.svg svg/richmond_hill.svg svg/manilatown.svg
+
+svg/sunsetpark_bensonhurst.svg: mapping/nybb_22a/nybb_wgs84.shp plans/senate.geojson
+	mapshaper -i $^ combine-files \
+	-target senate \
+	-filter "[20, 17].includes(senate)" \
 	-lines \
 	-style stroke=black \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
+	-target "*" \
 	-proj EPSG:3857 \
+	-simplify 22% \
+	-clean \
 	-o $@
 
-svg/chinatown.svg: plans/senate.geojson Makefile
-	mapshaper $< \
+svg/chinatown.svg: mapping/nybb_22a/nybb_wgs84.shp plans/senate.geojson
+	mapshaper -i $^ combine-files \
+	-target senate \
 	-filter "[26].includes(senate)" \
 	-lines \
 	-style stroke=black \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
+	-target "*" \
 	-proj EPSG:3857 \
+	-simplify 22% \
+	-clean \
 	-o $@
 
-svg/chinatown_congress.svg: plans/congress.geojson Makefile
-	mapshaper $< \
+svg/chinatown_congress.svg: mapping/nybb_22a/nybb_wgs84.shp plans/congress.geojson
+	mapshaper -i $^ combine-files \
+	-target congress \
 	-filter "[10].includes(congress)" \
 	-lines \
 	-style stroke=black \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
+	-target "*" \
 	-proj EPSG:3857 \
+	-simplify 22% \
+	-clean \
 	-o $@
 
-svg/richmond_hill.svg: plans/assembly.geojson Makefile
-	mapshaper $< \
+svg/richmond_hill.svg: mapping/nybb_22a/nybb_wgs84.shp plans/assembly.geojson
+	mapshaper -i $^ combine-files \
+	-target assembly \
 	-filter "[24, 27, 28, 38, 23, 31, 32].includes(assembly)" \
 	-lines \
 	-style stroke=black \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
+	-target "*" \
 	-proj EPSG:3857 \
+	-simplify 22% \
+	-clean \
 	-o $@
 
-svg/elmhurst.svg: plans/assembly.geojson Makefile
-	mapshaper $< \
-	-filter "[35, 34, 39, 30, 28].includes(assembly)" \
+svg/manilatown.svg: mapping/nybb_22a/nybb_wgs84.shp plans/assembly.geojson
+	mapshaper -i $^ combine-files \
+	-target assembly \
+	-filter "[35, 34, 39].includes(assembly)" \
 	-lines \
 	-style stroke=black \
+	-target nybb_wgs84 \
+	-style fill='#e2e2e2' \
+	-target "*" \
 	-proj EPSG:3857 \
+	-simplify 22% \
+	-clean \
 	-o $@
 
 svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson 
@@ -67,33 +99,6 @@ svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson
 	-proj EPSG:3857 \
 	-simplify 22% \
 	-clean \
-	-o $@
-
-svg/assembly.svg: plans/assembly.geojson Makefile
-	mapshaper $< \
-	-join mapping/nyc_counties.geojson \
-	-filter "!!GEOID" \
-	-lines \
-	-style stroke=black \
-	-proj EPSG:3857 \
-	-o $@
-
-svg/senate.svg: plans/senate.geojson Makefile
-	mapshaper $< \
-	-join mapping/nyc_counties.geojson \
-	-filter "!!GEOID" \
-	-lines \
-	-style stroke=black \
-	-proj EPSG:3857 \
-	-o $@
-
-svg/congress.svg: plans/congress.geojson Makefile
-	mapshaper $< \
-	-join mapping/nyc_counties.geojson \
-	-filter "!!GEOID" \
-	-lines \
-	-style stroke=black \
-	-proj EPSG:3857 \
 	-o $@
 
 mapping/nybb_22a/nybb_wgs84.shp:
