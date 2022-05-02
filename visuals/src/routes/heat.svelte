@@ -22,8 +22,8 @@
 	export let census;
 
 	let map, loaded;
-	let year = 'temp';
-	let metric = 'residfar';
+	let year = 'temp_past';
+	let metric = 'imp';
 
 	function color({ properties: d }) {
 		/* const colors = [
@@ -74,9 +74,12 @@
 			],
 			tree: [0.04278385197645081, 0.14645235069885643, 0.35050369685767097, 0.8286626506024096],
 			income: [49896.0, 78194.0, 120580.0, 250001.0],
+			imp: [127.6, 1163.8500000000029, 2705.380000000008, 8296.239999999852],
+			imp: [6.4, 10.6, 14, 8297],
+			imp: [6.4, 14, 200, 8297],
 			// builtfar: [2.385, 8.4, 30.71, 71.67],
 			builtfar: [0.49, 0.7, 1.7, 71.67],
-			residfar: [.5, 1, 2.5, 10],
+			residfar: [0.5, 1, 2.5, 10]
 		};
 		let y, m;
 		for (y = 0; y < cutoffs[year].length; y++) {
@@ -102,6 +105,7 @@
 	}
 
 	onMount(() => {
+		console.log(census.features[0	])
 		mapboxgl.accessToken =
 			'pk.eyJ1IjoianNvbmthbyIsImEiOiJjanNvM2U4bXQwN2I3NDRydXQ3Z2kwbWQwIn0.JWAoBlcpDJwkzG-O5_r0ZA';
 		map = new mapboxgl.Map({
@@ -150,12 +154,14 @@
 	<div class="controls">
 		<select bind:value={year}>
 			{#each ['temp', 'temp_past'] as y}
-				<option value={y}>{{'temp': '2018 Temp', 'temp_past': '2000 Temp'}[y]}</option>
+				<option value={y}>{{ temp: '2018 Temp', temp_past: '2000 Temp' }[y]}</option>
 			{/each}
 		</select>
 		<select bind:value={metric}>
-			{#each ['None', 'tree', 'income', 'builtfar', 'residfar'] as m}
-				<option value={m}>{{'builtfar': 'Building FAR', 'residfar': 'Residential FAR'}[m] || m}</option>
+			{#each ['None', 'tree', 'income', 'imp', 'builtfar', 'residfar'] as m}
+				<option value={m}
+					>{{ imp: 'Impervious surfacing', builtfar: 'Building FAR', residfar: 'Residential FAR' }[m] || m}</option
+				>
 			{/each}
 		</select>
 

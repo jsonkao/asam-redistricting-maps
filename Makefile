@@ -18,7 +18,7 @@ PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 
 visuals/static/census.topojson: mapping/census.geojson Makefile
 	mapshaper $< \
-	-filter-fields GEOID,temp,temp_past,tree,income,builtfar,residfar \
+	-filter-fields GEOID,temp,temp_past,tree,imp,income,builtfar,residfar \
 	-simplify 22% \
 	-clean \
 	-o $@ format=topojson

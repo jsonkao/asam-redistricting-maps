@@ -1,14 +1,26 @@
-## What this repo does
+## Intro
 
-First, it interpolates the 2010 Asian population from 2010 block groups to 2020 block groups. The methodology and code for that can be found [here](https://jsonkao.github.io/asam-redistricting-maps/census.html). The block-group-to-block-group crosswalk is at [`crosswalk/crosswalk.csv`](https://github.com/jsonkao/asam-redistricting-maps/blob/citywide/crosswalk/crosswalk.csv). The final CSV that compares 2010 demographics data to 2020 demographics data on the same block group geography is at [`data/data.csv`](https://github.com/jsonkao/asam-redistricting-maps/blob/cityside/data/data.csv).
+## Data preparation
 
-Next, it joins it with block group geographies and Letters plan geographies. The resulting GeoJSON is at [`mapping/output.geojson`](https://github.com/jsonkao/asam-redistricting-maps/blob/main/mapping/output.geojson).
+I used Landsat imagery as a source of land surface temperature (LST). I used extensive land use data at the tax lot level compiled by New York City in the Primary Land Use Tax Lot Output (PLUTO) database. PLUTO contains data about the buildings in each tax lot, including zoning information (e.g. maximum allowable floor-to-area ratios), the number of residential units, and the name of the owner (which can reveal important characteristics such as whether the building is public housing). I also used the USGS National Land Cover Database (NLCD) to determine the amount of impervious surfacing in a given region. The NLCD is a raster database at 30m resolution. Each pixel is labelled with the percentage of impervious surfacing within that pixel, as well as the dominant type of surfacing within it. Surfacing classes include different kinds of roads, buildings, energy production sites (e.g. road vs. building). I also use the layer of NLCD that details the percentage of each pixel covered by trees.
 
-Some exploratory mapping of that data lives on [Observable](https://observablehq.com/@jsonkao/asam-redistricting-maps).
+## Research workflow
 
-The Makefile directs all the data downloading and transformation.
+I built an interactive website to visualize the data, as well as to explain to local communities why their neighborhoods could experience higher or lower temperatures. The website is built with Svelte, a JavaScript framework commonly used for interactive graphics, and SvelteKit, a full stack toolbox for Svelte websites. The website lets you visualize two metrics at once.
 
-## TODOS
+![images/South_Bronx.png]
+An example of using the visualization to find a story is in the south Bronx. I had the impervious surfacing metric toggled on, in combination with the temperature map. was curious about what a strip
 
-Census blocks
-* Data isn't eprfect, but that's how you get the exact data the people are using to draw the maps.
+Multiple interstate highways, power plants, and trucking operations are there.
+
+/* TODO: this is what i did, why, and what id do next */
+
+/* TODO: primer on heat */
+
+/* Jupyter noteebok */
+
+/* Have the Colab run on local VM; Have someone local be able to run it like Hong */
+
+due 5/6
+
+just send her an email with url, repo
