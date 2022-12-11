@@ -10,7 +10,41 @@ PLANS_GEOJSON = $(PLANS:%=plans/%.geojson)
 FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 #
-# SVGs for documentary
+# SVGs for documentary (December 2022)
+#
+
+doc_maps: svg/congress/10.svg svg/congress/6.svg svg/senate/17.svg svg/senate/27.svg svg/senate/16.svg svg/senate/12.svg svg/senate/13.svg svg/senate/15.svg
+
+svg/%.svg:
+	mapshaper mapping/background.topojson  mapping/census.geojson special_master/$(patsubst svg/%/$(notdir $@),%,$@).json combine-files \
+	-proj EPSG:3857 \
+	-target $(patsubst svg/%/$(notdir $@),%,$@) \
+	-filter "district == $(basename $(notdir $@))" \
+	-style stroke=#121212 fill=none \
+	-target census \
+	-filter 'ALAND > 0 && vap20_total > 0' \
+	-join $(patsubst svg/%/$(notdir $@),%,$@) point-method \
+	-filter '!!district' \
+	-each "prop_asian = vap20_asian / vap20_total" \
+	-filter "prop_asian >= 0.1" \
+	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.1,0.2,0.4 \
+	-style fill='getColor(prop_asian)' stroke=none \
+	-o $@ target='*'
+
+mapping/background.topojson: mapping/nybb_22a/nybb_wgs84.shp
+	mapshaper $< \
+	-rename-layers background \
+	-dissolve \
+	-style fill='#f1f1f1' \
+	-simplify 22% \
+	-clean \
+	-o $@
+
+special_master/%.json: special_master/cervas_%.json Makefile
+	mapshaper $< \
+	-o $@ target="$(notdir $(basename $@))"
+#
+# SVGs for documentary (March 2022)
 #
 
 all: svg/sunsetpark_bensonhurst.svg svg/chinatown.svg svg/chinatown_congress.svg svg/richmond_hill.svg svg/manilatown.svg
@@ -91,7 +125,7 @@ svg/asians.svg: mapping/nybb_22a/nybb_wgs84.shp mapping/census.geojson
 	-each "prop_asian = pop20_asian / pop20_total" \
 	-filter "prop_asian >= 0.1" \
 	-filter "pop20_total > 0" \
-	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.2,0.4,0.6 \
+	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.0,0.4,0.6 \
 	-style fill='getColor(prop_asian)' \
 	-target nybb_wgs84 \
 	-style fill='#e2e2e2' \
