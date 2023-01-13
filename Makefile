@@ -15,16 +15,16 @@ FIRST_VIEWRECT = $(shell node visuals/src/lib/constants.js)
 
 doc_maps: svg/congress/10.svg svg/congress/6.svg svg/senate/17.svg svg/senate/27.svg svg/senate/16.svg svg/senate/12.svg svg/senate/13.svg svg/senate/15.svg
 
-svg/%.svg:
+svg/%.svg: Makefile
 	mapshaper mapping/background.topojson  mapping/census.geojson special_master/$(patsubst svg/%/$(notdir $@),%,$@).json combine-files \
 	-proj EPSG:3857 \
 	-target $(patsubst svg/%/$(notdir $@),%,$@) \
-	-filter "district == $(basename $(notdir $@))" \
+	-filter "District == $(basename $(notdir $@))" \
 	-style stroke=#121212 fill=none \
 	-target census \
 	-filter 'ALAND > 0 && vap20_total > 0' \
 	-join $(patsubst svg/%/$(notdir $@),%,$@) point-method \
-	-filter '!!district' \
+	-filter '!!District' \
 	-each "prop_asian = vap20_asian / vap20_total" \
 	-filter "prop_asian >= 0.1" \
 	-colorizer name=getColor colors='#D2A4A3,#D44C46,#A34946,#5A0909' breaks=0.1,0.2,0.4 \
@@ -40,9 +40,14 @@ mapping/background.topojson: mapping/nybb_22a/nybb_wgs84.shp
 	-clean \
 	-o $@
 
-special_master/%.json: special_master/cervas_%.json Makefile
-	mapshaper $< \
-	-o $@ target="$(notdir $(basename $@))"
+special_master/%.json: special_master/latfor/%.zip Makefile
+	mapshaper $< name="$*" \
+	-proj wgs84 \
+	-if "field_exists('DISTRICT')" \
+	-rename-fields District=DISTRICT \
+	-endif \
+	-clean \
+	-o $@
 
 # SVGs for documentary (March 2022)
 #
