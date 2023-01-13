@@ -43,7 +43,7 @@ mapping/background.topojson: mapping/nybb_22a/nybb_wgs84.shp
 special_master/%.json: special_master/cervas_%.json Makefile
 	mapshaper $< \
 	-o $@ target="$(notdir $(basename $@))"
-#
+
 # SVGs for documentary (March 2022)
 #
 
